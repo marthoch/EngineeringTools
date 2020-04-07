@@ -1,0 +1,1016 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+open:
+ + nachrechung der doctests
+
+"""
+
+__author__  = 'Martin Hochwallner, Dipl.-Ing. <marthoch@users.noreply.github.com>'
+# $Source$
+        
+import math
+import logging        
+from paradinf import uval
+from paradinf import quantities as Q
+from paradinf import quantities
+from paradinf.tools.tools import *
+
+_log = logging.getLogger('ParaDIn.tools.FKM')
+
+################################################################################
+#  exceptions
+################################################################################
+class ParaDInF_tools_FKM_Error(Exception):
+    """Exception: tools FKM"""
+    pass
+
+               
+################################################################################
+#  class
+################################################################################
+class LoadCase(object):
+    """
+    
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> l = LoadCase(Q.Stress(50.0, 'N/mm^2'), Q.Stress(100.0, 'N/mm^2'), overload_case = 'F1')
+    >>> print l.min
+      50.0   {N/mm2} (Stress)
+    >>> print l.max
+     100     {N/mm2} (Stress)
+    >>> print l.median
+      75.0   {N/mm2} (Stress)
+    >>> print l.amplitude
+      25.0   {N/mm2} (Stress)
+    
+    """
+        
+    def __init__(self, min, max, overload_case):
+        self._min = Q.Stress(min)
+        self._max = Q.Stress(max)
+        self.overload_case = overload_case
+        if overload_case == None  and  min == Q.Stress(0.0) and  max == Q.Stress(0.0):
+            pass # null
+        else: 
+            if self._min >= self._max:
+                raise ParaDInF_tools_FKM_Error, 'must: min < max: %s < %s' % (self._min, self._max)
+            if self.overload_case not in ['F1', 'F2', 'F3', 'F4']:
+                raise ParaDInF_tools_FKM_Error, 'overload_case: F1..F4: %s' % self.overload_case
+            
+    def __str__(self):
+        return 'min=%s; max=%s; median=%s; amplitude=%s; %s' % (self.get_min(), self.get_max(), self.get_median(), self.get_amplitude(), self.overload_case)
+    
+    def get_min(self):
+        return self._min
+    min = property(fget=get_min) 
+
+    def get_max(self):
+        return self._max 
+    max = property(fget=get_max)
+    
+    def get_median(self):
+        return Q.Stress((self._min + self._max).uval / 2.0)
+    median = property(fget=get_median)
+
+    def get_amplitude(self):
+        return Q.Stress((self._max - self._min).uval / 2.0)
+    amplitude = property(fget=get_amplitude)
+
+
+
+
+class Formzahl(object):
+    """ Formzahl und Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe """
+    
+    def __init__(self):
+        self.name = 'Formzahl'
+        self.source = 'FKM2003 page 178 fig x.x.x'
+        self.d = Q.Distance(d)
+
+    def get_K_t_zd(self):
+        """Formzahl für : Zug/Druck"""
+        return Q.Scalar(1.0)
+    K_t_zd=property(fget=get_K_t_zd)
+    
+    def get_K_t_b(self):
+        """Formzahl für : Biegung"""
+        return Q.Scalar(1.0)
+    K_t_b=property(fget=get_K_t_b)
+    
+    def get_K_t_t(self):
+        """Formzahl für : Torsion"""
+        return Q.Scalar(1.0)
+    K_t_t=property(fget=get_K_t_t)
+
+    def get_Gq_sigma_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe: FKM2003 page 53 tab 2.3.3"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_sigma_r=property(fget=get_Gq_sigma_r)
+
+    def get_Gq_sigma_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe:  FKM2003 page 52 eq 2.3.17"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_sigma_d=property(fget=get_Gq_sigma_d)
+
+    def get_Gq_tau_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe:  FKM2003 page 53 tab 2.3.3"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_tau_r=property(fget=get_Gq_tau_r)
+
+    def get_Gq_tau_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe:  FKM2003 page 52 eq 2.3.17"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_tau_d=property(fget=get_Gq_tau_d)
+
+
+
+class Formzahl_ohne_Kerbe(object):
+    """ Formzahl und Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe """
+    
+    def __init__(self, d):
+        self.name = 'Formzahl'
+        self.source = 'FKM2003 page 178 fig x.x.x'
+        self.d = Q.Distance(d)
+
+    def get_K_t_zd(self):
+        """Formzahl für : Zug/Druck"""
+        return Q.Scalar(1.0)
+    K_t_zd=property(fget=get_K_t_zd)
+    
+    def get_K_t_b(self):
+        """Formzahl für : Biegung"""
+        return Q.Scalar(1.0)
+    K_t_b=property(fget=get_K_t_b)
+    
+    def get_K_t_t(self):
+        """Formzahl für : Torsion"""
+        return Q.Scalar(1.0)
+    K_t_t=property(fget=get_K_t_t)
+
+
+    def get_Gq_sigma_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe: FKM2003 page 53 tab 2.3.3"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_sigma_r=property(fget=get_Gq_sigma_r)
+
+    def get_Gq_sigma_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe:  FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_sigma_d=property(fget=get_Gq_sigma_d)
+
+    def get_Gq_tau_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe:  FKM2003 page 53 tab 2.3.3"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_tau_r=property(fget=get_Gq_tau_r)
+
+    def get_Gq_tau_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohen Kerbe:  FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_tau_d=property(fget=get_Gq_tau_d)
+
+
+
+class Formzahl_Rundstab_Umlaufkerbe(Formzahl):
+    """Formzahl für Rundstab mit Umlaufkerbe: FKM2003 page 178 fig 5.2.1, fig 5.2.2, fig 5.2.3
+    
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> quantities.Quantity.set_str_quantization(None)
+    >>> n = Formzahl_Rundstab_Umlaufkerbe(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm'))
+    >>> print n.K_t_zd
+     289     {%} (Scalar)
+    >>> print n.K_t_b
+     240     {%} (Scalar)
+    >>> print n.K_t_s
+    100000000000000010000000000000     {%} (Scalar)
+    >>> print n.K_t_t
+     172     {%} (Scalar)
+    >>> print n.Gq_sigma_r
+    200.0 {m^-1}
+    >>> print n.Gq_sigma_d
+    13.33333 {m^-1}
+    >>> print n.Gq_tau_r
+    100.0 {m^-1}
+    >>> print n.Gq_tau_d
+    13.33333 {m^-1}
+    
+    """ 
+
+    def __init__(self, r, d, D):
+        self.name = 'Formzahl für Rundstab mit Umlaufkerbe'
+        self.source = 'FKM2003 page 178 fig 5.2.1, fig 5.2.2, fig 5.2.3'
+        self.r = Q.Distance(r)
+        if self.r < Q.Distance(0.0):
+            raise ParaDInF_tools_FKM_Error, 'must: r > 0.0'
+        self.d = Q.Distance(d)
+        self.D = Q.Distance(D)
+        if self.d > self.D:
+            raise ParaDInF_tools_FKM_Error, 'must: D > d'
+
+    def get_K_t_zd(self):
+        """Formzahl für Rundstab mit Umlaufkerbe: Zug/Druck FKM2003 page 178 fig 5.2.1"""
+        t = (self.D.uval-self.d.uval)/2.0;
+        return Q.Scalar(1.0 + 1.0/sqrt(0.22*self.r.uval/t + 2.74*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2))
+    K_t_zd=property(fget=get_K_t_zd)
+    
+    def get_K_t_b(self):
+        """Formzahl für Rundstab mit Umlaufkerbe: Biegung FKM2003 page 178 fig 5.2.2"""
+        t = (self.D.uval-self.d.uval)/2.0;
+        return Q.Scalar(1.0 + 1.0/sqrt(0.20*self.r.uval/t + 5.5*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2))
+    K_t_b=property(fget=get_K_t_b)
+
+    def get_K_t_s(self):
+        """Formzahl für Rundstab mit Wellenschulter: Torsion FKM2003 page 178 keine Werte bekannt"""
+        return Q.Scalar(1e27) 
+    K_t_s=property(fget=get_K_t_s)
+     
+    def get_K_t_t(self):
+        """Formzahl für Rundstab mit Umlaufkerbe: Torsion FKM2003 page 178 fig 5.2.3"""
+        t = (self.D.uval-self.d.uval)/2.0;
+        return Q.Scalar(1.0 + 1.0/sqrt(0.70*self.r.uval/t + 20.6*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2))
+    K_t_t=property(fget=get_K_t_t)
+
+    def get_Gq_sigma_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Umlaufkerbe: FKM2003 page 53 tab 2.3.3"""
+        t = (self.D.uval-self.d.uval)/2.0;   
+        if t / self.d.uval > uval.UVal(0.25, {}):  # FKM2003 page 53 tab 2.3.3 footnote 2
+            phi = uval.UVal(0.0, {})
+        else:
+            phi = 1.0/(4.0*sqrt(t/self.r.uval)+2.0)  
+        return (2.0/self.r.uval*(1.0+phi))
+    Gq_sigma_r=property(fget=get_Gq_sigma_r)
+
+    def get_Gq_sigma_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Umlaufkerbe: FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_sigma_d=property(fget=get_Gq_sigma_d)
+
+    def get_Gq_tau_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Umlaufkerbe: FKM2003 page 53 tab 2.3.3"""
+        return (1.0/self.r.uval)
+    Gq_tau_r=property(fget=get_Gq_tau_r)
+
+    def get_Gq_tau_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Umlaufkerbe: FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_tau_d=property(fget=get_Gq_tau_d)
+
+
+class Formzahl_Rundstab_Wellenschulter(Formzahl):
+    """Formzahl für Rundstab mit Wellenschulter: FKM2003 page 178 fig 5.2.4, fig 5.2.5, fig 5.2.6
+
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> quantities.Quantity.set_str_quantization(None)    
+    >>> n = Formzahl_Rundstab_Wellenschulter(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm'))
+    >>> print n.K_t_zd
+     218     {%} (Scalar)
+    >>> print n.K_t_b
+     195     {%} (Scalar)
+    >>> print n.K_t_s
+    100000000000000010000000000000     {%} (Scalar)
+    >>> print n.K_t_t
+     150     {%} (Scalar)
+    >>> print n.Gq_sigma_r
+    230.0 {m^-1}
+    >>> print n.Gq_sigma_d
+    13.33333 {m^-1}
+    >>> print n.Gq_tau_r
+    115.0 {m^-1}
+    >>> print n.Gq_tau_d
+    13.33333 {m^-1}
+    """ 
+
+    def __init__(self, r, d, D):
+        self.name = 'Formzahl für Rundstab mit Wellenschulter'
+        self.source = 'FKM2003 page 178 fig 5.2.4, fig 5.2.5, fig 5.2.6'
+        self.r = Q.Distance(r)
+        if self.r < Q.Distance(0.0):
+            raise ParaDInF_tools_FKM_Error, 'must: r > 0.0'
+        self.d = Q.Distance(d)
+        self.D = Q.Distance(D)
+        if self.d > self.D:
+            raise ParaDInF_tools_FKM_Error, 'must: D > d'
+
+    def get_K_t_zd(self):
+        """Formzahl für Rundstab mit Wellenschulter: Zug/Druck FKM2003 page 178 fig 5.2.4"""
+        t = (self.D.uval-self.d.uval)/2.0;
+        return Q.Scalar(1.0 + 1.0/sqrt(0.62*self.r.uval/t + 7.0*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2))
+    K_t_zd=property(fget=get_K_t_zd)
+    
+    def get_K_t_b(self):
+        """Formzahl für Rundstab mit Wellenschulter: Biegung FKM2003 page 178 fig 5.2.5"""
+        t = (self.D.uval-self.d.uval)/2.0;
+        return Q.Scalar(1.0 + 1.0/sqrt(0.62*self.r.uval/t + 11.6*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2 + 0.2*(self.r.uval/t)**3 * self.d.uval/self.D.uval))
+    K_t_b=property(fget=get_K_t_b)
+
+    def get_K_t_s(self):
+        """Formzahl für Rundstab mit Wellenschulter: Torsion FKM2003 page 178 fig 5.2.6 keine Werte bekannt"""
+        return Q.Scalar(1e27) 
+    K_t_s=property(fget=get_K_t_s)
+     
+    def get_K_t_t(self):
+        """Formzahl für Rundstab mit Wellenschulter: Torsion FKM2003 page 178 fig 5.2.6"""
+        t = (self.D.uval-self.d.uval)/2.0;
+        return Q.Scalar(1.0 + 1.0/sqrt(3.4*self.r.uval/t + 38.0*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2 + 1.0*(self.r.uval/t)**2 * self.d.uval/self.D.uval))
+    K_t_t=property(fget=get_K_t_t)
+
+    def get_Gq_sigma_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Wellenschulter: FKM2003 page 53 tab 2.3.3"""
+        t = (self.D.uval-self.d.uval)/2.0;   
+        if t / self.d.uval > uval.UVal(0.25, {}):  # FKM2003 page 53 tab 2.3.3 footnote 2
+            phi = uval.UVal(0.0, {})
+        else:
+            phi = 1.0/(4.0*sqrt(t/self.r.uval)+2.0)  
+        return (2.3/self.r.uval*(1.0+phi))
+    Gq_sigma_r=property(fget=get_Gq_sigma_r)
+
+    def get_Gq_sigma_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Wellenschulter: FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_sigma_d=property(fget=get_Gq_sigma_d)
+
+    def get_Gq_tau_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Wellenschulter: FKM2003 page 53 tab 2.3.3"""
+        return (1.15/self.r.uval)
+    Gq_tau_r=property(fget=get_Gq_tau_r)
+
+    def get_Gq_tau_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Wellenschulter: FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_tau_d=property(fget=get_Gq_tau_d)
+
+
+
+class FKM_Ermuedung_Nennspannung(object):
+    """
+    >>> fkm = FKM_Ermuedung_Nennspannung()
+    """
+    
+    def __init__(self):
+        """ """
+        self._spannung = _Spannung(self)
+        self._material = _Material(self)
+        self._konstruktion = _Konstruktion(self)
+        self._bauteilfestigkeit = _Bauteilfestigkeit(self)
+        self._nachweis = _Nachweis(self)
+
+    def calc(self):
+        #self._spannung.calc()
+        self._material.calc()
+        self._konstruktion.calc()
+        self._bauteilfestigkeit.calc()
+        self._nachweis.calc()
+        
+    def set_spannung(self, load_case, min=None, max=None, overload_case='F2'):
+        self._spannung.set_spannung(load_case, min, max, overload_case)
+        
+    def set_material(self, mat):
+        self._material.set_material(mat)
+            
+    def set_d_eff(self, d_eff):
+        self._material.set_d_eff(d_eff)
+
+    def set_anisotropie_angle(self, phi):
+        """Anisotropie: Winkel zur Vorzugsrichtung
+        
+        >>> f =FKM_Ermuedung_Nennspannung()
+        >>> f.set_anisotropie_angle(Q.Angle(0.0, 'deg'))  # K_A = 1.0
+        >>> f.set_anisotropie_angle(Q.Angle(90.0, 'deg')) # K_A = min 
+        """
+        self._material.set_anisotropie_angle(phi)
+               
+    def set_rauheit(self, Rz):
+        self._konstruktion.set_rauheit(Rz)
+        
+    def set_K_V(self, K_V):
+        self._konstruktion.set_K_V(K_V)
+
+    def set_formzahl(self, formzahl):
+        self._konstruktion.set_formzahl(formzahl)
+        
+    def get_utilisation(self):
+        self.calc()
+        return self._nachweis.utilisation
+
+
+
+class _Spannung(object):
+    """ """
+    
+    def __init__(self, fkm):
+        self._fkm = fkm
+        self.S_x_zd = LoadCase(Q.Stress(0.0), Q.Stress(0.0), None)
+        self.S_x_b = LoadCase(Q.Stress(0.0), Q.Stress(0.0), None)
+        self.T_x_s = LoadCase(Q.Stress(0.0), Q.Stress(0.0), None)
+        self.T_x_t = LoadCase(Q.Stress(0.0), Q.Stress(0.0), None)
+        
+    def set_spannung(self, load_case, min=None, max=None, overload_case=None):        
+        if min==None: min = Q.Stress(0.0)
+        if max==None: max = Q.Stress(0.0)
+        if overload_case not in ('F1', 'F2', 'F3', 'F4'):
+            raise ParaDInF_tools_FKM_Error, 'overload_case not known: %s' % overload_case
+        if load_case == 'zd':
+            self.S_x_zd = LoadCase(min, max, overload_case) # FKM2003 page 58ff
+        elif load_case == 'b':
+            self.S_x_b = LoadCase(min, max, overload_case) # FKM2003 page 58ff
+        if load_case == 's':
+            self.T_x_s = LoadCase(min, max, overload_case) # FKM2003 page 58ff
+        if load_case == 't':
+            self.T_x_t = LoadCase(min, max, overload_case) # FKM2003 page 58ff        
+ 
+    def list(self):
+        for n, o in self.__dict__.iteritems():
+            print '%10s = %s' % (n, o)
+
+
+
+class _Material(object):
+    """
+    ++ Werkstoffkennwerte FKM 2003 page 47ff
+    
+    checked with scilab_FKM
+    
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> quantities.Quantity.set_str_quantization(None)
+    >>> fkm = FKM_Ermuedung_Nennspannung()
+    >>> fkm.set_spannung('zd', min=Q.Stress(0.0, 'N/mm^2'), max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm.set_spannung('b', Q.Stress(-25.0, 'N/mm^2'), max=Q.Stress(25.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm.set_spannung('t', Q.Stress(-20.0, 'N/mm^2'), max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm._material.set_material('S235JR')
+    >>> fkm._material.set_d_eff(Q.Distance(250.0, 'mm'))    
+    >>> fkm._konstruktion.set_rauheit(Q.Distance(25.0, 'mu'))
+    >>> fkm._konstruktion.set_formzahl(Formzahl_Rundstab_Wellenschulter(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm')))
+    >>> fkm.calc()
+    >>> m = fkm._material 
+    >>> m.set_d_eff(Q.Distance(250.0, 'mm'))
+    >>> print m.K_d_m
+      90.0   {%} (Scalar)
+    >>> print m.K_d_p
+      78.0   {%} (Scalar)
+    >>> print m.Rm
+     292     {N/mm2} (Stress)
+    >>> print m.Rp
+     165     {N/mm2} (Stress)
+    >>> print m.sigma_W_zd
+     131     {N/mm2} (Stress)
+    >>> print m.tau_W_s
+      75.7   {N/mm2} (Stress)
+
+    """
+    def __init__(self, fkm):
+        """ """
+        self._fkm = fkm 
+        self.d_eff  = Q.Distance(0.0)
+        self.K_A_k  = Q.Scalar(1.0)   # 0.0 .. 1.0 K_A anteilig  = sin(phi)
+
+    def set_material(self, mat):
+        """ """
+        if mat == 'S235JR':
+            self.names      = ['S235JR', 'S235J2G3', '1.0037', '1.0116']  # FKM2003 page 132 tab 5.1.1
+            self.Rm_N       = Q.Stress(360.0, 'N/mm^2')     # FKM2003 page 132 tab 5.1.1
+            self.Rp_N       = Q.Stress(235.0, 'N/mm^2')     # FKM2003 page 132 tab 5.1.1
+            self.K_A        = Q.Scalar(0.90)      # FKM2003 page 26 tab 1.2.4
+            self.d_eff_N_m  = Q.Distance(40.0, 'mm')        # FKM2003 page 25 tab 1.2.1
+            self.a_d_m      = Q.Scalar(0.15)      # FKM2003 page 25 tab 1.2.1
+            self.d_eff_N_p  = Q.Distance(40.0, 'mm')        # FKM2003 page 25 tab 1.2.1
+            self.a_d_p      = Q.Scalar(0.3)       # FKM2003 page 25 tab 1.2.1
+            self.f_W_sigma  = Q.Scalar(0.45)      # FKM2003 page 48 tab 2.2.1
+            self.f_W_tau    = Q.Scalar(1/(3.0**(1.0/2.0)))  # FKM2003 page 48 tab 2.2.1
+            self.a_R_sigma  = Q.Scalar(0.22)      # FKM2003 page 55 tab 2.3.4
+            self.Rm_N_min   = Q.Stress(400.0, 'N/mm^2')     # FKM2003 page 55 tab 2.3.4
+            self.aG         = Q.Scalar(0.50)      # FKM2003 page 52 tab 2.3.2
+            self.bG         = Q.Stress(2700.0, 'N/mm^2')    # FKM2003 page 52 tab 2.3.2
+            self.aM         = Q.Scalar(0.35)      # FKM2003 page 62 tab 2.4.2      
+            self.bM         = Q.Scalar(-0.1)      # FKM2003 page 62 tab 2.4.2       
+        else:
+            raise ParaDInF_tools_FKM_Error, 'Material not found: %s' % mat
+            
+    def set_d_eff(self, d_eff):
+        self.d_eff = Q.Distance(d_eff)
+
+
+    def set_anisotropie_angle(self, phi):
+        """Anisotropie: Winkel zur Vorzugsrichtung
+        
+        >>> m = _Material(None)
+        >>> m.set_anisotropie_angle(Q.Angle(0.0, 'deg'))  # K_A = 1.0
+        >>> m.set_anisotropie_angle(Q.Angle(90.0, 'deg')) # K_A = min 
+        """
+        self.K_A_k = sin(Q.Angle(phi))
+
+    def list(self):
+        for n in sorted(self.__dict__.keys()):
+            if n[0] != '_':
+                print '%10s = %s' % (n, self.__dict__[n])
+
+
+    def calc(self):
+        if self.d_eff <= self.d_eff_N_m: 
+            self.K_d_m = Q.Scalar(1.0)
+        else:
+            self.K_d_m = Q.Scalar((1.0 - 1.0/log10(20.0)*self.a_d_m.uval*log10(self.d_eff.uval/Q.Distance(7.5, 'mm').uval)) / (1.0 - 1.0/log10(20.0)*self.a_d_m.uval*log10(self.d_eff_N_m.uval/Q.Distance(7.5, 'mm').uval))) # FKM eq 1.2.9
+        if self.d_eff <= self.d_eff_N_m: 
+            self.K_d_p = Q.Scalar(1.0)
+        else:
+            self.K_d_p = Q.Scalar((1.0 - 1.0/log10(20.0)*self.a_d_p.uval*log10(self.d_eff.uval/Q.Distance(7.5, 'mm').uval)) / (1.0 - 1.0/log10(20.0)*self.a_d_p.uval*log10(self.d_eff_N_p.uval/Q.Distance(7.5, 'mm').uval))) # FKM eq 1.2.9
+        # FKM eq 1.2.1
+        self.K_A_eff = self.K_A.uval * self.K_A_k.uval + (1.0 - self.K_A_k.uval)
+        self.Rm = Q.Stress(self.K_d_m.uval  * self.K_A_eff * self.Rm_N.uval) 
+        self.Rp = Q.Stress(self.K_d_p.uval  * self.K_A_eff * self.Rp_N.uval)
+        self.sigma_W_zd = Q.Stress(self.f_W_sigma.uval * self.Rm.uval)
+        self.tau_W_s    = Q.Stress(self.f_W_tau.uval * self.sigma_W_zd.uval)
+
+
+            
+class _Konstruktion(object):
+    """Konstruktionskennwerte FKM2003 page 50ff
+    
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> quantities.Quantity.set_str_quantization(None)
+    >>> fkm = FKM_Ermuedung_Nennspannung()
+    >>> fkm.set_spannung('zd', min=Q.Stress(0.0, 'N/mm^2'), max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm.set_spannung('b', Q.Stress(-25.0, 'N/mm^2'), max=Q.Stress(25.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm.set_spannung('t', Q.Stress(-20.0, 'N/mm^2'), max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm._material.set_material('S235JR')
+    >>> fkm._material.set_d_eff(Q.Distance(250.0, 'mm'))    
+    >>> fkm._konstruktion.set_rauheit(Q.Distance(25.0, 'mu'))
+    >>> fkm._konstruktion.set_formzahl(Formzahl_Rundstab_Wellenschulter(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm')))
+    >>> fkm.calc()
+    >>> k=fkm._konstruktion
+
+    >>> print k.K_R_sigma
+      95.0   {%} (Scalar)
+    >>> print k.K_R_tau
+      97.1   {%} (Scalar)
+    
+    Stützziffern
+    >>> print k._get_n_sigma(0.01/Q.Distance(1.0, 'mm').uval)
+     101     {%} (Scalar)
+    >>> print k._get_n_sigma(0.5/Q.Distance(1.0, 'mm').uval)
+     117     {%} (Scalar)
+    >>> print k._get_n_sigma(5.0/Q.Distance(1.0, 'mm').uval)
+     137     {%} (Scalar)
+    >>> print k._get_n_tau(0.01/Q.Distance(1.0, 'mm').uval)
+     101     {%} (Scalar)
+    >>> print k._get_n_tau(0.5/Q.Distance(1.0, 'mm').uval)
+     119     {%} (Scalar)
+    >>> print k._get_n_tau(5.0/Q.Distance(1.0, 'mm').uval)
+     141     {%} (Scalar)
+    >>> k.set_formzahl(Formzahl_Rundstab_Wellenschulter(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm')))
+    >>> print k.K_f_zd
+     195     {%} (Scalar)
+    >>> print k.K_f_b
+     172     {%} (Scalar)
+    >>> print k.K_f_s
+    91500000000000011000000000000     {%} (Scalar)
+    >>> print k.K_f_t
+     136     {%} (Scalar)
+
+    >>> print k.K_WK_zd
+     200     {%} (Scalar)
+    >>> print k.K_WK_b
+     177     {%} (Scalar)
+    >>> print k.K_WK_s
+    91500000000000011000000000000     {%} (Scalar)
+    >>> print k.K_WK_t
+     139     {%} (Scalar)
+    """
+    
+    def __init__(self, fkm):
+        """ """
+        self._fkm = fkm
+        self.material = fkm._material ###
+        
+        self.Rz = None
+        self.formzahl = None
+        self.K_NL_E = Q.Scalar(1.0)
+        self.K_S = Q.Scalar(1.0)
+        self.K_V = Q.Scalar(1.0)
+        
+    def set_rauheit(self, Rz):
+        """Rauheitsfaktor FMK2003 page 54 """
+        self.Rz = Q.Distance(Rz)
+
+    def set_formzahl(self, fz):
+        """ """
+        self.formzahl = fz
+        
+    def set_K_V(self, K_V):
+        """ """
+        self.K_V = K_V
+    
+    def _get_n_sigma(self, Gq_sigma):
+        """Stützzahlen für Normalspannungen FMK2003 page 51 eq 2.3.13ff
+        """
+        if Gq_sigma < 0.0/Q.Distance(1.0, 'mm').uval:   
+            raise ParaDInF_tools_FKM_Error, 'Gq_sigam < 0'
+        elif Gq_sigma <= 0.1/Q.Distance(1.0, 'mm').uval:  # 0.1 mmm^-1
+            return Q.Scalar(1.0 + (Gq_sigma * Q.Distance(1.0, 'mm').uval) * 10.0**(-(self.material.aG.uval - 0.5 + self.material.Rm.uval/self.material.bG.uval).value))   #FKM2003 eq 2.3.13
+        elif Gq_sigma <= 1.0/Q.Distance(1.0, 'mm').uval:  # 1.0 mmm^-1
+            return Q.Scalar(1.0 + sqrt(Gq_sigma * Q.Distance(1.0, 'mm').uval) * 10.0**(-(self.material.aG.uval + self.material.Rm.uval/self.material.bG.uval).value))  #FKM2003 eq 2.3.14
+        elif Gq_sigma <= 100.0/Q.Distance(1.0, 'mm').uval:  # 100.0 mmm^-1
+            return Q.Scalar(1.0 + (Gq_sigma* Q.Distance(1.0, 'mm').uval)**(1, 4) * 10.0**(-(self.material.aG.uval + self.material.Rm.uval/self.material.bG.uval).value)) #FKM2003 eq 2.3.15
+        else:
+            raise ParaDInF_tools_FKM_Error, 'Gq_sigam out of Range'
+
+
+    def _get_n_tau(self, Gq_tau):
+        """Stützzahlen für Normalspannungen FMK2003 page 51 eq 2.3.13ff
+        """
+        if Gq_tau < 0.0/Q.Distance(1.0, 'mm').uval:   
+            raise ParaDInF_tools_FKM_Error, 'Gq_sigam < 0'
+        elif Gq_tau <= 0.1/Q.Distance(1.0, 'mm').uval:  # 0.1 mmm^-1
+            return Q.Scalar(1.0 + (Gq_tau * Q.Distance(1.0, 'mm').uval) * 10.0**(-(self.material.aG.uval - 0.5 + self.material.f_W_tau.uval*self.material.Rm.uval/self.material.bG.uval).value))   #FKM2003 eq 2.3.13
+        elif Gq_tau <= 1.0/Q.Distance(1.0, 'mm').uval:  # 1.0 mmm^-1
+            return Q.Scalar(1.0 + sqrt(Gq_tau * Q.Distance(1.0, 'mm').uval) * 10.0**(-(self.material.aG.uval + self.material.f_W_tau.uval*self.material.Rm.uval/self.material.bG.uval).value))  #FKM2003 eq 2.3.14
+        elif Gq_tau <= 100.0/Q.Distance(1.0, 'mm').uval:  # 100.0 mmm^-1
+            return Q.Scalar(1.0 + (Gq_tau* Q.Distance(1.0, 'mm').uval)**(1, 4) * 10.0**(-(self.material.aG.uval + self.material.f_W_tau.uval*self.material.Rm.uval/self.material.bG.uval).value)) #FKM2003 eq 2.3.15
+        else:
+            raise ParaDInF_tools_FKM_Error, 'Gq_sigam out of Range'
+    
+    
+    def calc(self):
+
+        # Rauheitsfaktor FMK2003 page 54
+        self.K_R_sigma = Q.Scalar(1.0 - self.material.a_R_sigma.uval * log10(self.Rz.uval / Q.Distance(1.0, 'mu').uval) * log10(2 * self.material.Rm.uval / self.material.Rm_N_min.uval))
+        self.K_R_tau   = Q.Scalar(1.0 - self.material.f_W_tau.uval * self.material.a_R_sigma.uval * log10(self.Rz.uval / Q.Distance(1.0, 'mu').uval) * log10(2 * self.material.Rm.uval / self.material.Rm_N_min.uval))
+
+        if self.formzahl == None:
+            raise ParaDInF_tools_FKM_Error, 'Formzahl fehlt: use k.set_formzahl(Formzahl_xxx(xx))'
+                    
+        # FKM2003 eq 2.3.10
+        n_r = self._get_n_sigma(self.formzahl.Gq_sigma_r).uval if hasattr(self.formzahl, 'Gq_sigma_r') else uval.UVal(1.0)
+        n_d = self._get_n_sigma(self.formzahl.Gq_sigma_d).uval if hasattr(self.formzahl, 'Gq_sigma_d') else uval.UVal(1.0)
+
+        K_t = self.formzahl.K_t_zd.uval if hasattr(self.formzahl, 'K_t_zd') else uval.UVal(1e27)
+        self.K_f_zd = Q.Scalar(K_t / n_r)
+
+        K_t = self.formzahl.K_t_b.uval if hasattr(self.formzahl, 'K_t_b') else uval.UVal(1e27)
+        self.K_f_b =  Q.Scalar(K_t / (n_r * n_d))
+    
+        # FKM2003 eq 2.3.10
+        n_r = self._get_n_tau(self.formzahl.Gq_tau_r).uval if hasattr(self.formzahl, 'Gq_tau_r') else uval.UVal(1.0)
+        n_d = self._get_n_tau(self.formzahl.Gq_tau_d).uval if hasattr(self.formzahl, 'Gq_tau_d') else uval.UVal(1.0)
+
+        K_t = self.formzahl.K_t_s.uval if hasattr(self.formzahl, 'K_t_s') else uval.UVal(1e27)
+        self.K_f_s = Q.Scalar(K_t / (n_r))
+    
+        K_t = self.formzahl.K_t_t.uval if hasattr(self.formzahl, 'K_t_t') else uval.UVal(1e27)
+        self.K_f_t =  Q.Scalar(K_t / (n_r * n_d))
+
+    
+        # Konstruktionsfaktor FKM2003 eq 2.3.1
+        self.K_WK_zd = Q.Scalar((self.K_f_zd.uval + 1.0/self.K_R_sigma.uval - 1.0) * 1.0/(self.K_V.uval*self.K_S.uval*self.K_NL_E.uval))
+        self.K_WK_b  = Q.Scalar((self.K_f_b.uval  + 1.0/self.K_R_sigma.uval - 1.0) * 1.0/(self.K_V.uval*self.K_S.uval*self.K_NL_E.uval))
+        self.K_WK_s  = Q.Scalar((self.K_f_s.uval  + 1.0/self.K_R_tau.uval   - 1.0) * 1.0/(self.K_V.uval*self.K_S.uval)) 
+        self.K_WK_t  = Q.Scalar((self.K_f_t.uval  + 1.0/self.K_R_tau.uval   - 1.0) * 1.0/(self.K_V.uval*self.K_S.uval))
+        
+
+
+class _Bauteilfestigkeit(object):
+    """Bauteilfestigkeit FKM2003 page 57ff
+
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> quantities.Quantity.set_str_quantization(None)
+    >>> fkm = FKM_Ermuedung_Nennspannung()
+    >>> fkm.set_spannung('zd', min=Q.Stress(0.0, 'N/mm^2'), max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm.set_spannung('b', Q.Stress(-25.0, 'N/mm^2'), max=Q.Stress(25.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm.set_spannung('t', Q.Stress(-20.0, 'N/mm^2'), max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm._material.set_material('S235JR')
+    >>> fkm._material.set_d_eff(Q.Distance(250.0, 'mm'))    
+    >>> fkm._konstruktion.set_rauheit(Q.Distance(25.0, 'mu'))
+    >>> fkm._konstruktion.set_formzahl(Formzahl_Rundstab_Wellenschulter(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm')))
+    >>> fkm.calc()
+    >>> b = fkm._bauteilfestigkeit
+    
+    >>> print b.S_WK_zd
+      65.6   {N/mm2} (Stress)
+    >>> print b.S_WK_b
+      73.9   {N/mm2} (Stress)
+    >>> print b.T_WK_s
+       0.0000000000000000000000000828 {N/mm2} (Stress)
+    >>> print b.T_WK_t
+      54.5   {N/mm2} (Stress)
+    >>> print b.M_sigma
+       0.204 {%} (Scalar)
+    >>> print b.M_tau
+       0.118 {%} (Scalar)
+    
+    >>> print b.K_AK_zd
+     100.0   {%} (Scalar)
+    >>> print b.K_AK_b
+     100     {%} (Scalar)
+    >>> print b.K_AK_s
+     100     {%} (Scalar)
+    >>> print b.K_AK_t
+     100     {%} (Scalar)
+    
+    >>> print b.S_AK_zd
+      65.6   {N/mm2} (Stress)
+    
+    >>> print b.S_BK_zd
+      65.6   {N/mm2} (Stress)
+    >>> print b.S_BK_b
+      73.9   {N/mm2} (Stress)
+    >>> print b.T_BK_s
+       0.0000000000000000000000000828 {N/mm2} (Stress)
+    >>> print b.T_BK_t
+      54.5   {N/mm2} (Stress)
+    
+    """
+    
+
+    def __init__(self, fkm):
+        """ """
+        self.fkm = fkm
+
+        self.spannung = fkm._spannung  ###
+        self.material = fkm._material  ###
+        self.konstruktion = fkm._konstruktion ###
+
+        self.K_E_sigma = Q.Scalar(1.0) # Eingenspannungsfaktor FKM2003 2.4.2.3
+        self.K_E_tau = Q.Scalar(1.0)
+        self.K_BK_zd = Q.Scalar(1.0)   # FKM2003 page 64: dauerfest
+        self.K_BK_b  = Q.Scalar(1.0)
+        self.K_BK_s  = Q.Scalar(1.0)
+        self.K_BK_t  = Q.Scalar(1.0)
+
+    # Mittelspannungsfaktor FKM2003 page 58
+    def _get_K_AK(self, load_case):
+        """FKM2003 page """        
+   
+        def mittelSpaFaktor_F1(self, load_case):
+            """ Mittelspannungsfaktor K_AK: Überlastfall 1: Mittelspannung = const
+            FKM2003 page 60 eq 2.4.14 ff
+            """
+            lc_tab = {'zd':self.spannung.S_x_zd, 'b':self.spannung.S_x_b, 's':self.spannung.T_x_s, 't':self.spannung.T_x_t}
+            S_WK_tab = {'zd':self.S_WK_zd, 'b':self.S_WK_b, 's':self.T_WK_s, 't':self.T_WK_t}            
+            S_m = lc_tab[load_case].get_median().uval     
+          
+            if load_case in ('zd', 'b'):
+                K_E = self.K_E_sigma.uval
+                M = self.M_sigma.uval
+                s_m = S_m / (K_E * S_WK_tab[load_case].uval)
+                if s_m < -1.0/(1.0-M):
+                    return Q.Scalar(1.0 / (1.0-M))
+                elif s_m <= 1.0/(1.0+M):
+                    return Q.Scalar(1.0 - M*s_m)
+                elif s_m < (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar((1.0+M/3.0)/(1.0+M) - M/3.0*s_m)
+                elif  s_m >= (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F1 sigma'
+            elif load_case in ('s', 't'):
+                K_E = self.K_E_tau.uval
+                M = self.M_tau.uval
+                s_m = S_m / (K_E * S_WK_tab[load_case].uval)
+                if s_m < uval.UVal(0.0):
+                    raise ParaDInF_tools_FKM_Error, ('t_s < 0')
+                elif s_m < 1.0/(1.0+M):
+                    return Q.Scalar(1.0 - M*s_m)
+                elif s_m < (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar((1.0+M/3.0)/(1.0+M) - M/3.0*s_m)
+                elif  s_m >= (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F1 tau'
+            else:
+                raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F1: stressKind: sigma | tau'
+        
+    
+        def mittelSpaFaktor_F2(self, load_case):
+            """Mittelspannungsfaktor: Überlastfall 2: Spannungsverhältniss = const
+            FKM2003 page 59 eq 2.4.9 ff
+            
+            """
+            lc_tab = {'zd':self.spannung.S_x_zd, 'b':self.spannung.S_x_b, 's':self.spannung.T_x_s, 't':self.spannung.T_x_t}
+            S_m = lc_tab[load_case].get_median().uval
+            S_a = lc_tab[load_case].get_amplitude().uval
+            if abs(S_m + S_a) > Q.Stress(1e-12).uval:
+                R = (S_m - S_a) / (S_m + S_a)  # FKM2003 page 41 fig 2.1.1
+            else:
+                R = (S_m - S_a) / Q.Stress(1e-12).uval
+      
+            if load_case in ('zd', 'b'):
+                M = self.M_sigma.uval
+                if R > uval.UVal(1.0):    # Druckbereich
+                    return Q.Scalar(1.0 / (1.0-M))
+                elif R <= uval.UVal(0.0): # Druckwechsel-, Wechsel-, Zugwechselbereich
+                    return Q.Scalar(1.0 / (1.0 + M * S_m / S_a))
+                elif R < uval.UVal(0.5):  # niedriger Zugschwellbereich
+                    return Q.Scalar(((1.0+M/3.0)/(1.0+M)) / (1.0 + M/3.0 * S_m / S_a))
+                elif R >= uval.UVal(0.5): # niedriger Zugschwellbereich 
+                    return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F2 sigma: R=%s' % R
+            elif load_case in ('s', 't'):
+                M = self.M_tau.uval
+                if R < uval.UVal(-1.0):
+                    raise ParaDInF_tools_FKM_Error, ('R < -1');
+                elif R <= uval.UVal(0.0): # Druckwechsel-, Wechsel-, Zugwechselbereich
+                    return Q.Scalar(1.0 / (1.0 + M * S_m / S_a))
+                elif R < uval.UVal(0.5):  # niedriger Zugschwellbereich
+                    return Q.Scalar(((1.0+M/3.0)/(1.0+M)) / (1.0 + M/3.0 * S_m / S_a))
+                elif R >= uval.UVal(0.5): # niedriger Zugschwellbereich 
+                    return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F2 tau: R=%s' % R
+            else:
+                raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F2: stressKind: sigma | tau'
+    
+    
+        def mittelSpaFaktor_F3(self, load_case):
+            """ Mittelspannungsfaktor: Überlastfall 3: S_min = const
+            FKM2003 page 60 eq 2.4.18 ff
+            """
+            lc_tab = {'zd':self.spannung.S_x_zd, 'b':self.spannung.S_x_b, 's':self.spannung.T_x_s, 't':self.spannung.T_x_t}
+            S_WK_tab = {'zd':self.S_WK_zd, 'b':self.S_WK_b, 's':self.T_WK_s, 't':self.T_WK_t}
+            S_min = lc_tab[load_case].get_min().uval
+      
+            if load_case in ('zd', 'b'):
+                K_E = self.K_E_sigma.uval
+                M = self.M_sigma.uval
+                s_min = S_min / (K_E * S_WK_tab[load_case].uval)
+                if s_min < -2.0/(1.0-M):
+                    return Q.Scalar(1.0 / (1.0-M))
+                elif s_min <= uval.UVal(0.0):
+                    return Q.Scalar((1.0- M*s_min) / (1.0 + M))
+                elif s_min < 2.0/3.0 * (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar(((1.0+M/3.0)/(1.0+M) - M/3.0*s_min)/(1.0+M/3.0))
+                elif  s_min >= 2.0/3.0 * (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F3 sigma'
+            elif load_case in ('s', 't'):
+                K_E = self.K_E_tau.uval
+                M = self.M_tau.uval
+                s_min = S_min / (K_E * S_WK_tab[load_case].uval)
+                if s_min < uval.UVal(-1.0):
+                    raise ParaDInF_tools_FKM_Error, ('t_min < -1')
+                elif s_min <= uval.UVal(0):
+                    return Q.Scalar((1.0- M*s_min) / (1.0 + M))
+                elif s_min < 2.0/3.0 * (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar(((1.0+M/3.0)/(1.0+M) - M/3.0*s_min)/(1.0+M/3.0))
+                elif  s_min >= 2.0/3.0 * (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F3 tau'
+            else:
+                raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F3: stressKind: sigma | tau'
+    
+        def mittelSpaFaktor_F4(self, load_case):
+            """ Mittelspannungsfaktor: Überlastfall 4: S_max = const
+            FKM2003 page 61 eq 2.4.22 ff
+            """
+            lc_tab = {'zd':self.spannung.S_x_zd, 'b':self.spannung.S_x_b, 's':self.spannung.T_x_s, 't':self.spannung.T_x_t}
+            S_WK_tab = {'zd':self.S_WK_zd, 'b':self.S_WK_b, 's':self.T_WK_s, 't':self.T_WK_t}
+            S_max = lc_tab[load_case].get_max().uval
+      
+            if load_case in ('zd', 'b'):
+                K_E = self.K_E_sigma.uval
+                M = self.M_sigma.uval
+                s_max = S_max / (K_E * S_WK_tab[load_case].uval)                
+                if s_max < uval.UVal(0.0):
+                    return Q.Scalar(1.0 / (1.0-M))
+                elif s_max <= 2.0/(1.0+M):
+                    return Q.Scalar((1.0- M*s_max) / (1.0 - M))
+                elif s_max < 4.0/3.0 * (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar(((1.0+M/3.0)/(1.0+M) - M/3.0*s_max)/(1.0-M/3.0))
+                elif  s_max >=  4.0/3.0 * (3.0+M)/(1.0+M)**2:
+                    return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F4 sigma'
+            elif load_case in ('s', 't'):
+                raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F4 tau: not possible'
+            else:
+                raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F4: stressKind: sigma | tau'
+    
+        lc_tab = {'zd':self.spannung.S_x_zd, 'b':self.spannung.S_x_b, 's':self.spannung.T_x_s, 't':self.spannung.T_x_t}
+        olc_tab = {'F1':mittelSpaFaktor_F1, 'F2':mittelSpaFaktor_F2, 'F3':mittelSpaFaktor_F3, 'F4':mittelSpaFaktor_F4, None:lambda s, x: Q.Scalar(1.0)}
+        
+        
+        return olc_tab[lc_tab[load_case].overload_case](self, load_case)
+    
+
+    def calc(self):
+
+        # Bauteilwechselfestigkeit FKM2003 eq2.4.1
+        self.S_WK_zd = Q.Stress(self.material.sigma_W_zd.uval / self.konstruktion.K_WK_zd.uval)
+        self.S_WK_b  = Q.Stress(self.material.sigma_W_zd.uval / self.konstruktion.K_WK_b.uval)
+        self.T_WK_s  = Q.Stress(self.material.tau_W_s.uval    / self.konstruktion.K_WK_s.uval)
+        self.T_WK_t  = Q.Stress(self.material.tau_W_s.uval    / self.konstruktion.K_WK_t.uval)
+
+        # FKM2003 page 62 eq 2.4.34
+        self.M_sigma = Q.Scalar(self.material.aM.uval * 1.0e-3 * self.material.Rm.uval / Q.Stress(1.0, 'N/mm^2').uval + self.material.bM.uval)   
+    
+        # FKM2003 page 62 eq 2.4.34
+        self.M_tau = Q.Scalar(self.material.f_W_tau.uval * self.M_sigma.uval)   
+    
+        # FKM2003 page        
+        self.K_AK_zd = self._get_K_AK('zd')
+        self.K_AK_b  = self._get_K_AK('b')
+        self.K_AK_s  = self._get_K_AK('s')
+        self.K_AK_t  = self._get_K_AK('t')
+    
+        # FKM2003 eq 2.4.6        
+        self.S_AK_zd = Q.Stress(self.K_AK_zd.uval * self.K_E_sigma.uval * self.S_WK_zd.uval)
+        self.S_AK_b  = Q.Stress(self.K_AK_b.uval  * self.K_E_sigma.uval * self.S_WK_b.uval)
+        self.T_AK_s  = Q.Stress(self.K_AK_s.uval  * self.K_E_tau.uval   * self.T_WK_s.uval)
+        self.T_AK_t  = Q.Stress(self.K_AK_t.uval  * self.K_E_tau.uval   * self.T_WK_t.uval)
+
+        # FKM2003 ep 2.4.41        
+        self.S_BK_zd = Q.Stress(self.K_BK_zd.uval * self.S_AK_zd.uval)
+        self.S_BK_b  = Q.Stress(self.K_BK_b.uval  * self.S_AK_b.uval)
+        self.T_BK_s  = Q.Stress(self.K_BK_s.uval  * self.T_AK_s.uval)
+        self.T_BK_t  = Q.Stress(self.K_BK_t.uval  * self.T_AK_t.uval)
+
+
+
+class _Nachweis(object):
+    """
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> quantities.Quantity.set_str_quantization(None)
+    >>> fkm = FKM_Ermuedung_Nennspannung()
+    >>> fkm.set_spannung('zd', min=Q.Stress(0.0, 'N/mm^2'), max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm.set_spannung('b', Q.Stress(-25.0, 'N/mm^2'), max=Q.Stress(25.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm.set_spannung('t', Q.Stress(-20.0, 'N/mm^2'), max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> fkm._material.set_material('S235JR')
+    >>> fkm._material.set_d_eff(Q.Distance(250.0, 'mm'))    
+    >>> fkm._konstruktion.set_rauheit(Q.Distance(25.0, 'mu'))
+    >>> fkm._konstruktion.set_formzahl(Formzahl_Rundstab_Wellenschulter(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm')))
+    >>> fkm.calc()
+    >>> n = fkm._nachweis
+
+    
+    >>> print n.a_BK_zd
+      22.9   {%} (Scalar)
+    >>> print n.a_BK_b
+      50.7   {%} (Scalar)
+    >>> print n.a_BK_s
+       0     {%} (Scalar)
+    >>> print n.a_BK_t
+      55.0   {%} (Scalar)
+    >>> print n.s_a
+      73.6   {%} (Scalar)
+    >>> print n.t_a
+      55.0   {%} (Scalar)
+    >>> print n.a_NH
+      91.9   {%} (Scalar)
+    >>> print n.a_GH
+      91.9   {%} (Scalar)
+    >>> print n.utilisation
+      91.9   {%} (Scalar)
+    
+    """
+    
+    def __init__(self, fkm):
+        self._fkm = fkm
+        self.j_ges = Q.Scalar(1.5)
+
+
+    def calc(self):
+         # FKM2003 eq 2.6.3
+        self.a_BK_zd = Q.Scalar(self._fkm._spannung.S_x_zd.amplitude.uval / (self._fkm._bauteilfestigkeit.S_BK_zd.uval / self.j_ges.uval))
+        self.a_BK_b  = Q.Scalar(self._fkm._spannung.S_x_b.amplitude.uval / (self._fkm._bauteilfestigkeit.S_BK_b.uval / self.j_ges.uval))
+        self.a_BK_s  = Q.Scalar(self._fkm._spannung.T_x_s.amplitude.uval / (self._fkm._bauteilfestigkeit.T_BK_s.uval / self.j_ges.uval))
+        self.a_BK_t  = Q.Scalar(self._fkm._spannung.T_x_t.amplitude.uval / (self._fkm._bauteilfestigkeit.T_BK_t.uval / self.j_ges.uval))
+
+        # FKM2003 eq 2.6.6
+        self.s_a = self.a_BK_zd + self.a_BK_b
+        self.t_a = self.a_BK_s + self.a_BK_t
+
+        # FKM2003 eq 2.6.5
+        s_a = self.s_a.uval
+        self.a_NH = Q.Scalar(1.0/2.0*(abs(s_a) + sqrt(s_a**2 + 4.0*self.t_a.uval**2)))
+        self.a_GH = Q.Scalar(sqrt(s_a**2 + self.t_a.uval**2))
+
+        # FKM2003 eq 2.6.4
+        q = (sqrt(3.0) - (1.0/self._fkm._material.f_W_tau.uval))/(sqrt(3.0)-1.0)  # FKM2003 eq 2.6.7
+        self.a_BK_Sv = Q.Scalar(q * self.a_NH.uval + (1.0 - q)* self.a_GH.uval)
+        self.utilisation = self.a_BK_Sv
+    
+
+                                     
+################################################################################
+# test
+################################################################################
+def _setup_doctest():
+    import paradinf
+    paradinf.Q.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    
+def _test():
+    import doctest
+    _setup_doctest()
+    doctest.testmod()
+
+        
+################################################################################
+################################################################################
+if __name__ == '__main__':
+    from paradinf import loggingconf
+    loggingconf.loggingconf('../logging.confX')
+      
+    _test()
+    
+        
+#eof ###########################################################################

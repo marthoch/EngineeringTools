@@ -1,0 +1,1464 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# pylint: disable-msg=C0103,C0301,W0201,W0212,W0614,W0142
+"""
+content:    
+    FKM
+    Forschungskuratorium Maschinenbau
+    VDMA Verlag
+    Rechnerischer Festigkeitsnachweis für Maschinenbauteile
+    5. Ausgabe 2003
+            
+TODO: nachrechung der doctests
+
+"""
+from EngineeringTools import quantities
+
+__author__  = 'Martin Hochwallner, Dipl.-Ing. <marthoch@users.noreply.github.com>'
+
+# $Source$
+
+import logging        
+import os
+import string
+#from paradinf import table
+from .. quantities import uval
+from .. import quantities as Q
+from paradinf.tools.tools import *
+
+_log = logging.getLogger('ParaDIn.tools.FKM')
+
+################################################################################
+#  exceptions
+################################################################################
+class ParaDInF_tools_FKM_Error(Exception):
+    """Exception: tools FKM"""
+    pass
+
+               
+################################################################################
+#  class
+################################################################################
+class LoadCase(object):
+    """
+    
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> l = LoadCase(Q.Stress(50.0, 'N/mm^2'), Q.Stress(100.0, 'N/mm^2'), overload_case = 'F1')
+    >>> print l.min
+      50.0   {N/mm^2} (Stress)
+    >>> print l.max
+     100     {N/mm^2} (Stress)
+    >>> print l.median
+      75.0   {N/mm^2} (Stress)
+    >>> print l.amplitude
+      25.0   {N/mm^2} (Stress)
+    
+    """
+        
+    def __init__(self, ST_min, ST_max, overload_case):
+        self._min = Q.Stress(ST_min)
+        self._max = Q.Stress(ST_max)
+        self.overload_case = overload_case
+        if overload_case == None  and  ST_min == Q.Stress(0.0, 'N/mm^2') and  ST_max == Q.Stress(0.0, 'N/mm^2'):
+            pass # null
+        else: 
+            if self._min >= self._max:
+                raise ParaDInF_tools_FKM_Error, 'must: ST_min < ST_max: %s < %s' % (self._min, self._max)
+            if self.overload_case not in ['F1', 'F2', 'F3', 'F4']:
+                raise ParaDInF_tools_FKM_Error, 'overload_case: F1..F4: %s' % self.overload_case
+            
+    def __str__(self):
+        return 'ST_min=%s; ST_max=%s; ST_median=%s; ST_amplitude=%s; %s' % \
+                (self.get_min(), self.get_max(), 
+                 self.get_median(), self.get_amplitude(), self.overload_case)
+    
+    def get_min(self):
+        return self._min
+    min = property(fget=get_min) 
+
+    def get_max(self):
+        return self._max 
+    max = property(fget=get_max)
+    
+    def get_median(self):
+        return Q.Stress((self._min + self._max).uval / 2.0)
+    median = property(fget=get_median)
+
+    def get_amplitude(self):
+        return Q.Stress((self._max - self._min).uval / 2.0)
+    amplitude = property(fget=get_amplitude)
+
+
+
+# + Folrmzahlen ----------------------------------------------------------
+class Formzahl(object):
+    """ Formzahl und Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe """
+    
+    parameter_description = {}
+    
+    def __init__(self):
+        self.name = 'Formzahl'
+        self.source = 'FKM2003 page 178 fig x.x.x'
+        #self.d = Q.Distance(d)
+
+    def get_K_t_zd(self):
+        """Formzahl für : Zug/Druck"""
+        return Q.Scalar(1e9, displayUnit='1.0')
+    K_t_zd = property(fget=get_K_t_zd)
+    
+    def get_K_t_b(self):
+        """Formzahl für : Biegung"""
+        return Q.Scalar(1e9, displayUnit='1.0')
+    K_t_b = property(fget=get_K_t_b)
+
+    def get_K_t_s(self):
+        """Formzahl für: Torsion"""
+        return Q.Scalar(1e9, displayUnit='1.0')
+    K_t_s = property(fget=get_K_t_s)
+    
+    def get_K_t_t(self):
+        """Formzahl für : Torsion"""
+        return Q.Scalar(1e9, displayUnit='1.0')
+    K_t_t = property(fget=get_K_t_t)
+
+    def get_Gq_sigma_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe: FKM2003 page 53 tab 2.3.3"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_sigma_r = property(fget=get_Gq_sigma_r)
+
+    def get_Gq_sigma_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe:  FKM2003 page 52 eq 2.3.17"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_sigma_d = property(fget=get_Gq_sigma_d)
+
+    def get_Gq_tau_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe:  FKM2003 page 53 tab 2.3.3"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_tau_r = property(fget=get_Gq_tau_r)
+
+    def get_Gq_tau_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe:  FKM2003 page 52 eq 2.3.17"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_tau_d = property(fget=get_Gq_tau_d)
+
+
+    def gen_paradin(self, name, p):
+        notch = paradinf.paradin.Paradin(p)
+        #notch.add_cd_subject_folder(name=name, description=self.name)
+        notch.gui.add_entry_separator(name=name, description=self.name)
+        notch.add_entry(name='name', description='', quantity=Q.String(self.name))
+        notch.add_entry(name='source', description='', quantity=Q.String(self.source))
+        parameter = self.__dict__.copy()
+        parameter.pop('name')
+        parameter.pop('source')
+        for n in sorted(parameter):
+            if isinstance(parameter[n], Q.Quantity):
+                if n in self.parameter_description:
+                    desc = self.parameter_description[n]
+                else:
+                    desc = None
+                notch.add_entry(name=n, description=desc, quantity=parameter[n])
+        results = ['K_t_zd', 'K_t_b', 'K_t_s', 'K_t_t'] 
+        #, 'Gq_sigma_r', 'Gq_sigma_d', 'get_Gq_tau_r', 'Gq_tau_d']
+        for n in results:
+            notch.add_entry(name=n, quantity=getattr(self, n))
+
+
+class Formzahl_ohne_Kerbe(Formzahl):
+    """ Formzahl und Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe """
+    
+    def __init__(self, d):
+        self.name = 'Formzahl fuer Rundstab oder Flachstab ohne Kerbe'
+        self.source = 'FKM2003 page 178 fig x.x.x'
+        self.d = Q.Distance(d)
+
+    def get_K_t_zd(self):
+        """Formzahl für : Zug/Druck"""
+        return Q.Scalar(1.0, displayUnit='1.0')
+    K_t_zd = property(fget=get_K_t_zd)
+    
+    def get_K_t_b(self):
+        """Formzahl für : Biegung"""
+        return Q.Scalar(1.0, displayUnit='1.0')
+    K_t_b = property(fget=get_K_t_b)
+    
+    def get_K_t_t(self):
+        """Formzahl für : Torsion"""
+        return Q.Scalar(1.0, displayUnit='1.0')
+    K_t_t = property(fget=get_K_t_t)
+
+
+    def get_Gq_sigma_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe: FKM2003 page 53 tab 2.3.3"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_sigma_r = property(fget=get_Gq_sigma_r)
+
+    def get_Gq_sigma_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe:  FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_sigma_d = property(fget=get_Gq_sigma_d)
+
+    def get_Gq_tau_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe:  FKM2003 page 53 tab 2.3.3"""
+        return uval.UVal(1.0, {'meter':-1})
+    Gq_tau_r = property(fget=get_Gq_tau_r)
+
+    def get_Gq_tau_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab oder Flachstab ohne Kerbe:  FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_tau_d = property(fget=get_Gq_tau_d)
+
+
+
+class Formzahl_Rundstab_Umlaufkerbe(Formzahl):
+    """Formzahl für Rundstab mit Umlaufkerbe: FKM2003 page 178 fig 5.2.1, fig 5.2.2, fig 5.2.3
+    
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> quantities.Quantity.set_str_quantization(None)
+    >>> n = Formzahl_Rundstab_Umlaufkerbe(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm'))
+    >>> print n.K_t_zd
+       2.89  {1.0} (Scalar)
+    >>> print n.K_t_b
+       2.40  {1.0} (Scalar)
+    >>> print n.K_t_s
+    1000000000     {1.0} (Scalar)
+    >>> print n.K_t_t
+       1.72  {1.0} (Scalar)
+    >>> print n.Gq_sigma_r
+    200.0 {m^-1}
+    >>> print n.Gq_sigma_d
+    13.33333 {m^-1}
+    >>> print n.Gq_tau_r
+    100.0 {m^-1}
+    >>> print n.Gq_tau_d
+    13.33333 {m^-1}
+    
+    """ 
+    
+    parameter_description = {'r':'Radius', 'd':'kleiner Durchmesser', 'D':'grosser Durchmesser'}
+
+    def __init__(self, r, d, D):
+        self.name = 'Formzahl fuer Rundstab mit Umlaufkerbe'
+        self.source = 'FKM2003 page 178 fig 5.2.1, fig 5.2.2, fig 5.2.3'
+        self.r = Q.Distance(r)
+        if self.r < Q.Distance(0.0, 'mm'):
+            raise ParaDInF_tools_FKM_Error, 'must: r > 0.0'
+        self.d = Q.Distance(d)
+        self.D = Q.Distance(D)
+        if self.d > self.D:
+            raise ParaDInF_tools_FKM_Error, 'must: D > d'
+
+    def get_K_t_zd(self):
+        """Formzahl für Rundstab mit Umlaufkerbe: Zug/Druck FKM2003 page 178 fig 5.2.1"""
+        t = (self.D.uval-self.d.uval)/2.0
+        return Q.Scalar(1.0 + 1.0/sqrt(0.22*self.r.uval/t + 2.74*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2), displayUnit='1.0')
+    K_t_zd = property(fget=get_K_t_zd)
+    
+    def get_K_t_b(self):
+        """Formzahl für Rundstab mit Umlaufkerbe: Biegung FKM2003 page 178 fig 5.2.2"""
+        t = (self.D.uval-self.d.uval)/2.0
+        return Q.Scalar(1.0 + 1.0/sqrt(0.20*self.r.uval/t + 5.5*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2), displayUnit='1.0')
+    K_t_b = property(fget=get_K_t_b)
+     
+    def get_K_t_t(self):
+        """Formzahl für Rundstab mit Umlaufkerbe: Torsion FKM2003 page 178 fig 5.2.3"""
+        t = (self.D.uval-self.d.uval)/2.0
+        return Q.Scalar(1.0 + 1.0/sqrt(0.70*self.r.uval/t + 20.6*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2), displayUnit='1.0')
+    K_t_t = property(fget=get_K_t_t)
+
+    def get_Gq_sigma_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Umlaufkerbe: FKM2003 page 53 tab 2.3.3"""
+        t = (self.D.uval-self.d.uval)/2.0
+        if t / self.d.uval > uval.UVal(0.25, {}):  # FKM2003 page 53 tab 2.3.3 footnote 2
+            phi = uval.UVal(0.0, {})
+        else:
+            phi = 1.0/(4.0*sqrt(t/self.r.uval)+2.0)
+        return (2.0/self.r.uval*(1.0+phi))
+    Gq_sigma_r = property(fget=get_Gq_sigma_r)
+
+    def get_Gq_sigma_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Umlaufkerbe: FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_sigma_d = property(fget=get_Gq_sigma_d)
+
+    def get_Gq_tau_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Umlaufkerbe: FKM2003 page 53 tab 2.3.3"""
+        return (1.0/self.r.uval)
+    Gq_tau_r = property(fget=get_Gq_tau_r)
+
+    def get_Gq_tau_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Umlaufkerbe: FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_tau_d = property(fget=get_Gq_tau_d)
+
+
+class Formzahl_Rundstab_Wellenschulter(Formzahl):
+    """Formzahl für Rundstab mit Wellenschulter: FKM2003 page 178 fig 5.2.4, fig 5.2.5, fig 5.2.6
+
+    >>> quantities.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    >>> quantities.Quantity.set_str_quantization(None)
+    >>> n = Formzahl_Rundstab_Wellenschulter(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm'))
+    >>> print n.K_t_zd
+       2.18  {1.0} (Scalar)
+    >>> print n.K_t_b
+       1.95  {1.0} (Scalar)
+    >>> print n.K_t_s
+    1000000000     {1.0} (Scalar)
+    >>> print n.K_t_t
+       1.50  {1.0} (Scalar)
+    >>> print n.Gq_sigma_r
+    230.0 {m^-1}
+    >>> print n.Gq_sigma_d
+    13.33333 {m^-1}
+    >>> print n.Gq_tau_r
+    115.0 {m^-1}
+    >>> print n.Gq_tau_d
+    13.33333 {m^-1}
+    """
+
+    def __init__(self, r, d, D):
+        self.name = 'Formzahl fuer Rundstab mit Wellenschulter'
+        self.source = 'FKM2003 page 178 fig 5.2.4, fig 5.2.5, fig 5.2.6'
+        self.r = Q.Distance(r)
+        if self.r < Q.Distance(0.0, 'm'):
+            raise ParaDInF_tools_FKM_Error, 'must: r > 0.0'
+        self.d = Q.Distance(d)
+        self.D = Q.Distance(D)
+        if self.d > self.D:
+            raise ParaDInF_tools_FKM_Error, 'must: D > d'
+
+    def get_K_t_zd(self):
+        """Formzahl für Rundstab mit Wellenschulter: Zug/Druck FKM2003 page 178 fig 5.2.4"""
+        t = (self.D.uval-self.d.uval)/2.0
+        return Q.Scalar(1.0 + 1.0/sqrt(0.62*self.r.uval/t + 7.0*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2), displayUnit='1.0')
+    K_t_zd = property(fget=get_K_t_zd)
+
+    def get_K_t_b(self):
+        """Formzahl für Rundstab mit Wellenschulter: Biegung FKM2003 page 178 fig 5.2.5"""
+        t = (self.D.uval-self.d.uval)/2.0
+        return Q.Scalar(1.0 + 1.0/sqrt(0.62*self.r.uval/t + 11.6*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2 + 0.2*(self.r.uval/t)**3 * self.d.uval/self.D.uval), displayUnit='1.0')
+    K_t_b = property(fget=get_K_t_b)
+
+    def get_K_t_t(self):
+        """Formzahl für Rundstab mit Wellenschulter: Torsion FKM2003 page 178 fig 5.2.6"""
+        t = (self.D.uval-self.d.uval)/2.0
+        return Q.Scalar(1.0 + 1.0/sqrt(3.4*self.r.uval/t + 38.0*self.r.uval/self.d.uval*(1.0+2.0*self.r.uval/self.d.uval)**2 + 1.0*(self.r.uval/t)**2 * self.d.uval/self.D.uval), displayUnit='1.0')
+    K_t_t = property(fget=get_K_t_t)
+
+    def get_Gq_sigma_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Wellenschulter: FKM2003 page 53 tab 2.3.3"""
+        t = (self.D.uval-self.d.uval)/2.0
+        if t / self.d.uval > uval.UVal(0.25, {}):  # FKM2003 page 53 tab 2.3.3 footnote 2
+            phi = uval.UVal(0.0, {})
+        else:
+            phi = 1.0/(4.0*sqrt(t/self.r.uval)+2.0)
+        return (2.3/self.r.uval*(1.0+phi))
+    Gq_sigma_r = property(fget=get_Gq_sigma_r)
+
+    def get_Gq_sigma_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Wellenschulter: FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_sigma_d = property(fget=get_Gq_sigma_d)
+
+    def get_Gq_tau_r(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Wellenschulter: FKM2003 page 53 tab 2.3.3"""
+        return (1.15/self.r.uval)
+    Gq_tau_r = property(fget=get_Gq_tau_r)
+
+    def get_Gq_tau_d(self):
+        """Bezogenes Spannungsgefälle für Rundstab mit Wellenschulter: FKM2003 page 52 eq 2.3.17"""
+        return (2.0/self.d.uval)
+    Gq_tau_d = property(fget=get_Gq_tau_d)
+
+
+
+# + ----------------------------------------------------------------------
+class FKM_Festigkeitstnachweis_Stab(object):
+    """FKM: Festigkeitsnachweis mit Nennspannung fuer stabfoermibe Bauteile
+    
+    Forschungskuratorium Maschinenbau
+    Rechnerischer Festigkeitsnachweis für Maschinenbauteile
+    5. Ausgabe 2003
+
+
+    >>> p = paradinf.paradin.Paradin()
+    >>> f = FKM_Festigkeitstnachweis_Stab(p)
+    >>> f.set_spannung('zd', ST_min=Q.Stress(0.0, 'N/mm^2'), ST_max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> f.set_spannung('b', ST_min=Q.Stress(-25.0, 'N/mm^2'), ST_max=Q.Stress(25.0, 'N/mm^2'), overload_case='F1')
+    >>> f.set_spannung('b_extr', ST_min=Q.Stress(-50.0, 'N/mm^2'), ST_max=Q.Stress(50.0, 'N/mm^2'), overload_case='F1')
+    >>> f.set_spannung('t', ST_min=Q.Stress(-20.0, 'N/mm^2'), ST_max=Q.Stress(20.0, 'N/mm^2'), overload_case='F1')
+    >>> f.set_d_eff(Q.Distance(250.0, 'mm'), forcePermit='allowed')
+    >>> f.set_anisotropie_angle(Q.Angle(90.0, 'deg'), forcePermit='allowed')
+    >>> f.set_rauheit(Q.Distance(25.0, 'mu'), forcePermit='allowed')
+    >>> f.set_K_V(Q.Scalar(1.0), forcePermit='allowed')
+    >>> f.set_material('S235JR', forcePermit='allowed')
+    >>> f.set_safty(schadensfolge='hoch', inspektion='nein', pruefung='ja')
+    >>> f.set_formzahl(Formzahl_Rundstab_Wellenschulter(Q.Distance(10.0, 'mm'), Q.Distance(150.0, 'mm'), Q.Distance(250.0, 'mm')))
+    >>> print f.get_utilisation()
+       0.919 {1.0} (Scalar)
+
+    
+    >>> print p['/fkm/static/material/K_d_m']
+       0.900 {1.0} (Scalar)
+    >>> print p['/fkm/static/material/K_d_p']
+       0.780 {1.0} (Scalar)
+    >>> print p['/fkm/static/material/Rm']
+     292     {N/mm^2} (Stress)
+    >>> print p['/fkm/static/material/Rp']
+     165     {N/mm^2} (Stress)
+
+
+
+    >>> print p['/fkm/fatigue/component_strength/S_WK_zd']
+      65.6   {N/mm^2} (Stress)
+    >>> print p['/fkm/fatigue/component_strength/S_WK_b']
+      73.9   {N/mm^2} (Stress)
+    >>> print p['/fkm/fatigue/component_strength/T_WK_s']
+       0.0000000828 {N/mm^2} (Stress)
+    >>> print p['/fkm/fatigue/component_strength/T_WK_t']
+      54.5   {N/mm^2} (Stress)
+    >>> print p['/fkm/fatigue/component_strength/M_sigma']
+       0.00204 {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/component_strength/M_tau']
+       0.00118 {1.0} (Scalar)
+
+    >>> print p['/fkm/fatigue/component_strength/K_AK_zd']
+       1.000 {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/component_strength/K_AK_b']
+       1.00  {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/component_strength/K_AK_s']
+       1.00  {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/component_strength/K_AK_t']
+       1.00  {1.0} (Scalar)
+       
+    >>> print p['/fkm/fatigue/component_strength/S_AK_zd']
+      65.6   {N/mm^2} (Stress)
+
+    >>> print p['/fkm/fatigue/component_strength/S_BK_zd']
+      65.6   {N/mm^2} (Stress)
+    >>> print p['/fkm/fatigue/component_strength/S_BK_b']
+      73.9   {N/mm^2} (Stress)
+    >>> print p['/fkm/fatigue/component_strength/T_BK_s']
+       0.0000000828 {N/mm^2} (Stress)
+    >>> print p['/fkm/fatigue/component_strength/T_BK_t']
+      54.5   {N/mm^2} (Stress)
+
+
+    >>> print p['/fkm/fatigue/verification/a_BK_zd']
+       0.229 {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/verification/a_BK_b']
+       0.507 {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/verification/a_BK_s']
+       0     {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/verification/a_BK_t']
+       0.550 {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/verification/s_a']
+       0.736 {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/verification/t_a']
+       0.550 {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/verification/a_NH']
+       1.03  {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/verification/a_GH']
+       0.919 {1.0} (Scalar)
+    >>> print p['/fkm/fatigue/utilisation']
+       0.919 {1.0} (Scalar)
+    """
+    
+    
+    default_items_forcePermit = 'denied'
+    
+    
+    def __init__(self, paradin=None, name='fkm', description='FKM-Festigkeitsnachweis'):
+        """ """
+        self._paradin = paradinf.paradin.Paradin(paradin)
+        self._paradin.add_cd_subject_folder(name=name, description=description)
+
+        self._spannung_extr = _Spannung() # statischer Festigkeitsnachweis
+        self._spannung = _Spannung()      # Ermüdungsfestigkeitstnachweis
+        
+        self.d_eff = None     
+        self.K_V = {'quantity':Q.Scalar(1.0, displayUnit='1.0'), 'forcePermit':self.default_items_forcePermit}
+        self.K_S = {'quantity':Q.Scalar(1.0, displayUnit='1.0'), 'forcePermit':self.default_items_forcePermit}
+        self.K_NL_E = {'quantity':Q.Scalar(1.0, displayUnit='1.0'), 'forcePermit':self.default_items_forcePermit}
+        self.safty = {'schadensfolge':'hoch', 'auftrittswahrscheinlichkeit':'hoch', 
+                      'inspektion':'nein', 'pruefung':'nein',
+                      'j_m':None, 'j_p':None, 'j_D':None,
+                      'forcePermit':self.default_items_forcePermit}        
+        self.formzahl = None
+        
+        
+        page = string.Template("""<html><body bgcolor="#D0D0D0">
+        <h1>Festigkeitsnachweis</h1>
+        nach FKM:<br> <br>
+        Rechnerischer Festigkeitsnachweis f&uuml;r Maschinenbauteile<br>
+        5., erweiterte Ausgabe 2003 <br>
+        VDMA Verlag <br>
+        ISBN 3-8163-0479-6 <br>
+        <br>
+        Implementierung: ${__date__} -- ${__version__}
+        </body></html>""")
+        page = str(page.substitute(__date__=__date__, __version__=__version__))
+        self._paradin.gui.add_entry_doc('doc', page)
+
+
+        
+
+    def set_spannung(self, load_case, ST_min=None, ST_max=None, overload_case='F2'):
+        if load_case.endswith('_extr'):
+            self._spannung_extr.set_spannung(load_case[:-5], ST_min, ST_max, overload_case)
+        else:
+            self._spannung.set_spannung(load_case, ST_min, ST_max, overload_case)
+    
+    
+    def set_d_eff(self, d_eff, forcePermit='denied'):
+        """set effektiver Durchmesser d_eff
+        
+        FKM2003-1.2.2
+        """    
+        self.d_eff = {}
+        self.d_eff['quantity'] = Q.Distance(d_eff)
+        self.d_eff['forcePermit'] = forcePermit
+        
+        
+    def set_rauheit(self, Rz, forcePermit='denied'):
+        """Rauheit Rz (mittlere Rauheit der Oberfläche des Bauteils nach DIN 4768
+
+        FKM2003 page 54
+        """
+        self.Rz = {}
+        self.Rz['quantity'] = Q.Distance(Rz)
+        self.Rz['quantity'].set_displayUnit(displayUnit='mu')
+        self.Rz['forcePermit'] = forcePermit
+        
+        
+    def set_formzahl(self, formzahl):
+        self.formzahl = formzahl
+
+    
+    def set_anisotropie_angle(self, anisotropie_angle, forcePermit='denied'):
+        """Winkel zur Vorzugsrichtung; Anisotropie
+        
+        FKM2003-1.2.3
+        """    
+        self.anisotropie_angle = {}
+        self.anisotropie_angle['quantity'] = Q.Angle(anisotropie_angle)
+        self.anisotropie_angle['forcePermit'] = forcePermit
+        
+
+    def set_K_V(self, K_V, forcePermit='denied'):
+        """Randschichtfaktor KV
+        
+        FKM2003 page 55 tab 2.3.5
+        """
+        self.K_V = {}
+        self.K_V['quantity'] = Q.Scalar(K_V)
+        self.K_V['quantity'].set_displayUnit(displayUnit='1.0')
+        self.K_V['forcePermit'] = forcePermit
+        
+
+    def set_K_S(self, K_S, forcePermit='denied'):
+        """Schutzschichtfaktor K_S
+        
+        FKM2003-2.3.4
+        """
+        self.K_S = {}
+        self.K_S['quantity'] = Q.Scalar(K_S)
+        self.K_S['quantity'].set_displayUnit(displayUnit='1.0')
+        self.K_S['forcePermit'] = forcePermit
+
+
+    def set_K_NL_E(self, K_NL_E, forcePermit='denied'):
+        """Schutzschichtfaktor K_S
+        
+        FKM2003-2.3.4
+        """
+        self.K_NL_E = {}
+        self.K_NL_E['quantity'] = Q.Scalar(K_NL_E)
+        self.K_NL_E['quantity'].set_displayUnit(displayUnit='1.0')
+        self.K_NL_E['forcePermit'] = forcePermit
+
+
+    def set_material(self,  name=None, werkstoff_nr=None, filename=None, forcePermit=None):
+        """
+        ++ Werkstoffkennwerte FKM 2003 page 22ff
+        """
+        self.material = {}
+        self.material['name'] = name
+        self.material['werkstoff_nr'] = werkstoff_nr
+        self.material['filename'] = filename
+        self.material['forcePermit'] = forcePermit
+
+    def _set_material(self,  name=None, werkstoff_nr=None, filename=None, forcePermit=None):
+        """
+        ++ Werkstoffkennwerte FKM 2003 page 22ff
+
+        Anisotropie: Winkel zur Vorzugsrichtung
+        anisotropie_angle = Q.Angle(0.0, 'deg')  # K_A = 1.0
+        anisotropie_angle = Q.Angle(90.0, 'deg') # K_A = min
+
+        """
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        
+        if forcePermit is None:
+            forcePermit = self.default_items_forcePermit
+        fkm.add_entry(name='werkstoff', 
+                      description='Werkstoff', 
+                      quantity=(Q.String(name) if name is not None else Q.String('')),
+                      forcePermit=forcePermit)        
+        fkm.add_entry(name='werkstoff_nr', 
+                      description='Werkstoffnummer', 
+                      quantity=(Q.String(werkstoff_nr) if werkstoff_nr is not None else Q.String('')),
+                      forcePermit=forcePermit)
+
+        mattab.add_cd_subject_folder('materialtab', 'Werkstofftabellenkennwerte')
+
+        matfilter = {}
+        if (len(fkm['werkstoff'].value) > 0) and (fkm['werkstoff'].value != '-'):
+            matfilter['name'] = fkm['werkstoff']
+        if (len(fkm['werkstoff_nr'].value) > 0) and (fkm['werkstoff_nr'].value != '-'): 
+            matfilter['werkstoff_nr'] = fkm['werkstoff_nr']
+        if not matfilter:
+            raise ParaDInF_tools_FKM_Error, 'Material not found: %s' % matfilter
+        if filename is None:
+            filename = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+            filename = os.path.join(filename, 'data', 'FKM2003_Material.csv')        
+        self.mattable = table.Table()
+        self.mattable.read(filename)
+        self.materialdb = self.mattable.db(matfilter)
+        if len(self.materialdb) == 0:
+            raise ParaDInF_tools_FKM_Error, 'Material not found in file: %s' % matfilter
+        elif len(self.materialdb) == 1:
+            self.materialdb = self.materialdb[0]
+        else:
+            raise ParaDInF_tools_FKM_Error, 'Material not found'
+        param_list = ['name', 'werkstoff_nr', 'info', 'category', 'Rm_N', 'Rp_N', 
+                      'K_A', 'd_eff_N_m', 'a_d_m', 'd_eff_N_p', 'a_d_p', 
+                      'f_sigma_zug', 'f_sigma_druck', 'f_tau', 'f_W_sigma', 'f_W_tau', 
+                      'a_R_sigma', 'Rm_N_min', 'aG', 'bG', 'aM', 'bM', 'A5']
+        #mattab.add_entry(name='material', description='Werkstoff', 
+        #              quantity=Q.String(('%s %s %s' % (self.materialdb['name'].value, self.materialdb['werkstoff_nr'].value, self.materialdb['info'].value))))
+        for param in param_list:
+            desc = param
+            s = self.mattable.data_header['Source'][self.mattable.data_header['ID'].index(param)]
+            if s:
+                desc = '%s:   [%s]' % (desc, s) 
+            mattab.add_entry(name=param, description=desc, quantity=self.materialdb[param])
+     
+        
+    def set_safty(self, schadensfolge='hoch', auftrittswahrscheinlichkeit='hoch', \
+                   inspektion='nein', pruefung='nein', \
+                   j_m=None, j_p=None, j_D=None, \
+                   forcePermit=None):
+        self.safty = {}
+        self.safty['schadensfolge'] = schadensfolge
+        self.safty['auftrittswahrscheinlichkeit'] = auftrittswahrscheinlichkeit
+        self.safty['inspektion'] = inspektion
+        self.safty['pruefung'] = pruefung
+        self.safty['j_m'] = j_m
+        self.safty['j_p'] = j_p
+        self.safty['j_D'] = j_D
+        self.safty['forcePermit'] = forcePermit
+         
+            
+    def _set_safty(self):
+        """
+        FKM2003-1.5 p34  tab 1.5.1, tab 1.5.2
+        FKM2003-4.5 p    tab 4.5.1, tab 4.5.2
+        
+        schadensfolge: ['hoch', 'gering']
+        werkstoff:     ['duktilerGuss', 'Stahl']
+        inspektion:    ['nein', 'ja']
+        pruefung:      ['nein', 'ja']
+        
+        """              
+        self.safty['materialcategory'] = self._paradin['materialtab/category'].value
+        
+        if self.safty['forcePermit'] is None:
+            forcePermit = self.default_items_forcePermit
+        else:
+            forcePermit = self.safty['forcePermit'] 
+        safty = {}        
+        if self.safty['materialcategory'] == 'Stahl':
+            if self.safty['schadensfolge'] == 'hoch':
+                if self.safty['auftrittswahrscheinlichkeit'] == 'hoch':
+                    safty = {'j_m':2.0, 'j_p':1.5, 'j_mt':1.5, 'j_pt':1.0}
+                elif self.safty['auftrittswahrscheinlichkeit'] == 'gering':
+                    safty = {'j_m':1.8, 'j_p':1.35, 'j_mt':1.35, 'j_pt':1.0}
+                if self.safty['inspektion'] == 'nein':
+                    safty['j_D'] = 1.5
+                elif self.safty['inspektion'] =='ja':
+                    safty['j_D'] = 1.35
+            elif self.safty['schadensfolge'] == 'gering':
+                if self.safty['auftrittswahrscheinlichkeit'] == 'hoch':
+                    safty = {'j_m':1.75, 'j_p':1.3, 'j_mt':1.3, 'j_pt':1.0}
+                elif self.safty['auftrittswahrscheinlichkeit'] == 'gering':
+                    safty = {'j_m':1.6, 'j_p':1.2, 'j_mt':1.2, 'j_pt':1.0}
+                if self.safty['inspektion'] == 'nein':
+                    safty['j_D'] = 1.3
+                elif self.safty['inspektion'] =='ja':
+                    safty['j_D'] = 1.2
+        elif self.safty['materialcategory'] == 'GGG':
+            if self.safty['pruefung'] == 'nein':
+                if self.safty['schadensfolge'] == 'hoch':
+                    if self.safty['auftrittswahrscheinlichkeit'] == 'hoch':
+                        safty = {'j_m':2.8, 'j_p':2.1, 'j_mt':2.1, 'j_pt':1.4}
+                    elif self.safty['auftrittswahrscheinlichkeit'] == 'gering':
+                        safty = {'j_m':2.55, 'j_p':1.9, 'j_mt':1.9, 'j_pt':1.4}
+                    if self.safty['inspektion'] == 'nein':
+                        safty['j_D'] = 2.1
+                    elif self.safty['inspektion'] =='ja':
+                        safty['j_D'] = 1.9
+                elif self.safty['schadensfolge'] == 'gering':
+                    if self.safty['auftrittswahrscheinlichkeit'] == 'hoch':
+                        safty = {'j_m':2.45, 'j_p':1.8, 'j_mt':1.8, 'j_pt':1.4}
+                    elif self.safty['auftrittswahrscheinlichkeit'] == 'gering':
+                        safty = {'j_m':2.2, 'j_p':1.65, 'j_mt':1.65, 'j_pt':1.4}
+                    if self.safty['inspektion'] == 'nein':
+                        safty['j_D'] = 1.8
+                    elif self.safty['inspektion'] =='ja':
+                        safty['j_D'] = 1.7
+            elif self.safty['pruefung'] == 'ja':
+                if self.safty['schadensfolge'] == 'hoch':
+                    if self.safty['auftrittswahrscheinlichkeit'] == 'hoch':
+                        safty = {'j_m':2.5, 'j_p':1.9, 'j_mt':1.9, 'j_pt':1.25}
+                    elif self.safty['auftrittswahrscheinlichkeit'] == 'gering':
+                        safty = {'j_m':2.25, 'j_p':1.7, 'j_mt':1.7, 'j_pt':1.25}
+                    if self.safty['inspektion'] == 'nein':
+                        safty['j_D'] = 1.9
+                    elif self.safty['inspektion'] =='ja':
+                        safty['j_D'] = 1.7
+                elif self.safty['schadensfolge'] == 'gering':
+                    if self.safty['auftrittswahrscheinlichkeit'] == 'hoch':
+                        safty = {'j_m':2.2, 'j_p':1.65, 'j_mt':1.65, 'j_pt':1.25}
+                    elif self.safty['auftrittswahrscheinlichkeit'] == 'gering':
+                        safty = {'j_m':2.0, 'j_p':1.5, 'j_mt':1.5, 'j_pt':1.25}
+                    if self.safty['inspektion'] == 'nein':
+                        safty['j_D'] = 1.65
+                    elif self.safty['inspektion'] =='ja':
+                        safty['j_D'] = 1.5
+            dj = max(0.0, (0.5 - sqrt(self._paradin['materialtab/A5'].value / 0.5)))
+            for i in safty:
+                safty[i] = safty[i] + dj
+        
+        
+        if not safty and (self.safty['j_m'] is None or self.safty['j_p'] is None or self.safty['j_D'] is None):
+            raise ParaDInF_tools_FKM_Error, 'not all safty factors found'
+
+        self._paradin.add_entry(name='j_m', description='j_m: Sicherheitsfaktor Rm [FKM2003-1.5]', 
+                                quantity=Q.Scalar(self.safty['j_m'] if self.safty['j_m'] is not None else safty['j_m'], displayUnit='1.0'),
+                                forcePermit=forcePermit)
+        self._paradin.add_entry(name='j_p', description='j_p: Sicherheitsfaktor Rp [FKM2003-1.5]', 
+                                quantity=Q.Scalar(self.safty['j_p'] if self.safty['j_p'] is not None else safty['j_p'], displayUnit='1.0'),
+                                forcePermit=forcePermit)        
+        self._paradin.add_entry(name='j_D', description='j_D: Grundsicherheitsfaktor [FKM2003-2.5]', 
+                                quantity=Q.Scalar(self.safty['j_D'] if self.safty['j_D'] is not None else safty['j_D'], displayUnit='1.0'),
+                                forcePermit=forcePermit)
+
+
+        
+    def get_utilisation(self):
+        self.calc()
+        return self._paradin['utilisation']
+
+    # -------
+    def calc(self):
+        
+        self._set_material(**self.material)
+        self._paradin.add_entry(name='d_eff', description='d_eff: effektiver Durchmesser [FKM2003-1.2.2]', 
+                                **self.d_eff)
+        self._paradin.add_entry(name='anisotropie_angle', description='Winkel zur Vorzugsrichtung; Anisotropie [FKM2003-1.2.3]', 
+                        **self.anisotropie_angle)
+        self._paradin.add_entry(name='Rz', description='Rz: Rauheit der Oberflaeche [FKM2003-2.3.3]', 
+                                **self.Rz)
+        self._paradin.add_entry(name='K_V', description='K_V: Randschichtfaktor    [FKM2003-2.3.4 tab2.3.5]', 
+                                **self.K_V)
+        self._paradin.add_entry(name='K_S', description='K_S: Schutzschichtfaktor  [FKM2003-2.3.4 fig2.3.4]', 
+                                **self.K_S)
+        self._paradin.add_entry(name='K_NL_E', description='K_NL_E: Konstante fuer GG [FKM2003-2.3.5 tab2.3.6]', 
+                                **self.K_NL_E)
+        
+        self._set_safty()
+        
+        fkm = self._paradin
+        fkm.add_subject_folder('static', 'Statischer Festigkeitsnachweis [FKM2003-1.*]')
+        self._calc_stat_nennspannung()
+        fkm.add_subject_folder('fatigue', 'Ermeudungsfestigkeitsnachweis [FKM2003-2.*]')
+        self._calc_fatigue_nennspannung()
+        
+        u_stat = fkm['static/utilisation']
+        u_fat = fkm['fatigue/utilisation']
+        u = max(u_stat, u_fat)
+        fkm.add_entry(name='utilisation', quantity=u)
+        if fkm['utilisation'] <= Q.Scalar(1.0):
+            fkm.set_status('utilisation', status='OK')
+            fkm.set_infotext('utilisation', text=None)        
+        else:
+            fkm.set_status('utilisation', status='ERROR')
+            fkm.set_infotext('utilisation', text='max utilisation = 100%')        
+
+        
+    def _calc_stat_nennspannung(self):
+        self._calc_stat_nennspannung_stress()
+        self._calc_stat_nennspannung_material()
+        self._calc_stat_nennspannung_construction()
+        self._calc_stat_nennspannung_component_strength()
+        self._calc_stat_nennspannung_verification()
+        
+
+    def _calc_stat_nennspannung_stress(self):
+        fkm = self._paradin
+        stress = paradinf.paradin.Paradin(fkm)
+        stress.cd('static')
+        stress.add_cd_subject_folder('stress', 'Spannungskennwerte  [FKM2003-1.1]')
+        
+        transl_order = ['zd', 'b', 's', 't']
+        transl = {'zd':'S_x_zd', 'b':'S_x_b', 's':'T_x_s', 't':'T_x_t'}
+        transl_text = {'zd':'Zug/Druck', 'b':'Biegung', 's':'Schub', 't':'Torsion'}
+        for load_case in transl_order:
+            stress.gui.add_entry_separator('sep_'+load_case, 'Spannungskennwerte: '+transl_text[load_case] )
+             
+            if getattr(self._spannung_extr, transl[load_case]) == None:
+                lc = getattr(self._spannung, transl[load_case])
+            else:
+                lc = getattr(self._spannung_extr, transl[load_case])
+            if lc == None:
+                lc = LoadCase(Q.Stress(0.0, 'N/mm^2'), Q.Stress(0.0, 'N/mm^2'), None)
+            stress.add_entry(name=transl[load_case]+'_min', 
+                             description=transl[load_case]+': Minimum', quantity=lc.min)
+            stress.add_entry(name=transl[load_case]+'_max', 
+                             description=transl[load_case]+': Maximum', quantity=lc.max)        
+#            stress.add_entry(name=transl[load_case]+'_median', 
+#                             description='Mittelwert', quantity=lc.median)
+#            stress.add_entry(name=transl[load_case]+'_amplitude', 
+#                             description='Amplitude', quantity=lc.amplitude)
+            
+        
+    def _calc_stat_nennspannung_material(self):
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        mattab.cd('materialtab')
+        mat = paradinf.paradin.Paradin(fkm)
+        mat.cd('static')
+        mat.add_cd_subject_folder('material', 'Werkstoffkennwerte:   [FKM2003-1.2]')
+
+        if fkm['d_eff'] <= mattab['d_eff_N_m']:
+            mat.add_entry(name='K_d_m', description='K_d_m:   [FKM2003 p24]',
+                          quantity=Q.Scalar(1.0, displayUnit='1.0'))
+        else:
+            mat.add_entry(name='K_d_m', description='K_d_m:   [FKM2003 p24]', 
+                        quantity=Q.Scalar((1.0 - 1.0/log10(20.0)*mattab['a_d_m'].uval*log10(fkm['d_eff'].uval/Q.Distance(7.5, 'mm').uval)) / (1.0 - 1.0/log10(20.0)*mattab['a_d_m'].uval*log10(mattab['d_eff_N_m'].uval/Q.Distance(7.5, 'mm').uval)), displayUnit='1.0')) # FKM eq 1.2.9
+        if fkm['d_eff'] <= mattab['d_eff_N_p']:
+            mat.add_entry(name='K_d_p', description='K_d_p:   [FKM2003 p24]', 
+                        quantity=Q.Scalar(1.0, displayUnit='1.0'))
+        else:
+            mat.add_entry(name='K_d_p', description='K_d_p:   [FKM2003 p24]', 
+                        quantity=Q.Scalar((1.0 - 1.0/log10(20.0)*mattab['a_d_p'].uval*log10(fkm['d_eff'].uval/Q.Distance(7.5, 'mm').uval)) / (1.0 - 1.0/log10(20.0)*mattab['a_d_p'].uval*log10(mattab['d_eff_N_p'].uval/Q.Distance(7.5, 'mm').uval)), displayUnit='1.0')) # FKM eq 1.2.9        
+        
+        # FKM eq 1.2.1
+        K_A_k = sin(fkm['anisotropie_angle'])       
+        mat.add_entry(name='K_A_eff', 
+                    quantity=Q.Scalar(mattab['K_A'].uval * K_A_k.uval + (1.0 - K_A_k.uval), displayUnit='1.0'))
+        mat.add_entry(name='Rm', description='Rm:   [FKM2003 p23 eq1.2.1]', 
+                    quantity=Q.Stress(mat['K_d_m'].uval  * mat['K_A_eff'].uval * mattab['Rm_N'].uval))
+        mat.add_entry(name='Rp', description='Rp:   [FKM2003 p23 eq1.2.1]', 
+                    quantity=Q.Stress(mat['K_d_p'].uval  * mat['K_A_eff'].uval * mattab['Rp_N'].uval))
+
+        
+    def _calc_stat_nennspannung_construction(self):        
+        
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        mattab.cd('materialtab')
+        mat = paradinf.paradin.Paradin(fkm)
+        mat.cd('static/material')
+        constr = paradinf.paradin.Paradin(fkm)
+        constr.cd('static')
+        constr.add_cd_subject_folder('construction', 'Konstruktionskennwerte:   [FKM2003-1.3]')
+
+        constr.add_entry(name='K_SK_zd', description='K_SK_zd:   [FKM2003 p30 1.3 eq1.3.1]', 
+                         quantity=Q.Scalar(1.0, displayUnit='1.0'),
+                         forcePermit=self.default_items_forcePermit)
+        constr.add_entry(name='K_SK_b', description='K_SK_b:   [FKM2003 p30 1.3 eq1.3.1]', 
+                         quantity=Q.Scalar(1.0, displayUnit='1.0'),
+                         forcePermit=self.default_items_forcePermit)
+        constr.add_entry(name='K_SK_s', description='K_SK_s:   [FKM2003 p30 1.3 eq1.3.1]', 
+                         quantity=Q.Scalar(1.0, displayUnit='1.0'),
+                         forcePermit=self.default_items_forcePermit)
+        constr.add_entry(name='K_SK_t', description='K_SK_t:   [FKM2003 p30 1.3 eq1.3.1]', 
+                         quantity=Q.Scalar(1.0, displayUnit='1.0'),
+                         forcePermit=self.default_items_forcePermit)
+
+        
+    def _calc_stat_nennspannung_component_strength(self):
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        mattab.cd('materialtab')
+        mat = paradinf.paradin.Paradin(fkm)
+        mat.cd('static/material')
+        constr = paradinf.paradin.Paradin(fkm)
+        constr.cd('static/construction')
+        comp = paradinf.paradin.Paradin(fkm)
+        comp.cd('static')
+        comp.add_cd_subject_folder('component_strength', 'Bauteilfestigkeit:   [FKM2003-1.4]')
+
+        comp.add_entry(name='S_SK_zd_zug', description='S_SK_zd Zug:   [FKM2003 p33 eq1.4.1]',
+                       quantity=Q.Stress(mattab['f_sigma_zug'].uval * mat['Rm'].uval / constr['K_SK_zd'].uval))
+        comp.add_entry(name='S_SK_zd_druck', description='S_SK_zd Druck:   [FKM2003 p33 eq1.4.1]',
+                       quantity=Q.Stress( - mattab['f_sigma_druck'].uval * mat['Rm'].uval / constr['K_SK_zd'].uval))
+        comp.add_entry(name='S_SK_b', description='S_SK_b:   [FKM2003 p33 eq1.4.1]',
+                       quantity=Q.Stress(min(mattab['f_sigma_zug'].uval, mattab['f_sigma_druck'].uval) * mat['Rm'].uval / constr['K_SK_b'].uval))
+        comp.add_entry(name='S_SK_s', description='S_SK_s:   [FKM2003 p33 eq1.4.1]',
+                       quantity=Q.Stress(mattab['f_tau'].uval * mat['Rm'].uval / constr['K_SK_s'].uval))
+        comp.add_entry(name='S_SK_t', description='S_SK_t:   [FKM2003 p33 eq1.4.1]',
+                       quantity=Q.Stress(mattab['f_tau'].uval * mat['Rm'].uval / constr['K_SK_t'].uval))
+
+
+
+    def _calc_stat_nennspannung_verification(self):
+
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        mattab.cd('materialtab')        
+        stat = paradinf.paradin.Paradin(fkm)
+        stat.cd('static')        
+        mat = paradinf.paradin.Paradin(fkm)
+        mat.cd('static/material')
+        stress = paradinf.paradin.Paradin(fkm)
+        stress.cd('static/stress')
+        comp = paradinf.paradin.Paradin(fkm)
+        comp.cd('static/component_strength')        
+        veri = paradinf.paradin.Paradin(fkm)
+        veri.cd('static')
+        veri.add_cd_subject_folder('verification', 'Nachweis:   [FKM2003-1.6]')
+
+
+        jges = max(fkm['j_m'].uval, 
+                   fkm['j_p'].uval*mat['Rm'].uval/mat['Rp'].uval)
+        veri.add_entry(name='j_ges', quantity=Q.Scalar(jges, displayUnit='1.0'))
+
+
+        # FKM2003 eq 1.6.1        
+        a_SK_zd_zug = Q.Scalar(stress['S_x_zd_max'].uval / (comp['S_SK_zd_zug'].uval / veri['j_ges'].uval), displayUnit='1.0')
+        a_SK_zd_druck = Q.Scalar(stress['S_x_zd_min'].uval / (comp['S_SK_zd_druck'].uval / veri['j_ges'].uval), displayUnit='1.0')
+        
+        veri.add_entry(name='a_SK_zd', quantity=max(a_SK_zd_zug, a_SK_zd_druck))
+        veri.add_entry(name='a_SK_b', quantity=Q.Scalar(stress['S_x_b_max'].uval / (comp['S_SK_b'].uval / veri['j_ges'].uval), displayUnit='1.0'))
+        veri.add_entry(name='a_SK_s', quantity=Q.Scalar(stress['T_x_s_max'].uval / (comp['S_SK_s'].uval / veri['j_ges'].uval), displayUnit='1.0'))
+        veri.add_entry(name='a_SK_t', quantity=Q.Scalar(stress['T_x_t_max'].uval / (comp['S_SK_t'].uval / veri['j_ges'].uval), displayUnit='1.0'))
+
+
+        # FKM2003 eq 2.6.6
+        veri.add_entry(name='s_a', quantity=(veri['a_SK_zd'] + veri['a_SK_b']))
+        veri.add_entry(name='t_a', quantity=(veri['a_SK_s'] + veri['a_SK_t']))
+
+        # FKM2003 eq 2.6.5
+        s_a = veri['s_a'].uval
+        veri.add_entry(name='a_NH', quantity=Q.Scalar(1.0/2.0*(abs(s_a) + sqrt(s_a**2 + 4.0*veri['t_a'].uval**2)), displayUnit='1.0'))
+        veri.add_entry(name='a_GH', quantity=Q.Scalar(sqrt(s_a**2 + veri['t_a'].uval**2), displayUnit='1.0'))
+
+        # FKM2003 eq 2.6.4
+        q = (sqrt(3.0) - (1.0/mattab['f_W_tau'].uval))/(sqrt(3.0)-1.0)  # FKM2003 eq 2.6.7
+        veri.add_entry(name='a_SK_Sv', quantity=Q.Scalar(q * veri['a_NH'].uval + (1.0 - q)* veri['a_GH'].uval, displayUnit='1.0'))
+        
+        stat.add_entry(name='utilisation', quantity=veri['a_SK_Sv'])
+        if stat['utilisation'] <= Q.Scalar(1.0):
+            stat.set_status('utilisation', status='OK')
+            stat.set_infotext('utilisation', text=None)        
+        else:
+            stat.set_status('utilisation', status='ERROR')
+            stat.set_infotext('utilisation', text='max utilisation = 100%')        
+
+
+    def _calc_fatigue_nennspannung(self):
+        if self._spannung == None:
+            _log.warning('not stress for fatigue found')
+        else:
+            self._calc_fatigue_nennspannung_stress()
+            self._calc_fatigue_nennspannung_material()
+            self._calc_fatigue_nennspannung_construction()
+            self._calc_fatigue_nennspannung_component_strength()
+            self._calc_fatigue_nennspannung_verification()
+
+
+    def _calc_fatigue_nennspannung_stress(self):
+        fkm = self._paradin
+        stress = paradinf.paradin.Paradin(fkm)
+        stress.cd('fatigue')
+        stress.add_cd_subject_folder('stress', 'Spannungskennwerte  [FKM2003-2.1]')
+        
+        transl_order = ['zd', 'b', 's', 't']
+        transl = {'zd':'S_x_zd', 'b':'S_x_b', 's':'T_x_s', 't':'T_x_t'}
+        transl_text = {'zd':'Zug/Druck', 'b':'Biegung', 's':'Schub', 't':'Torsion'}
+        for load_case in transl_order:
+            stress.gui.add_entry_separator('sep_'+load_case, 'Spannungskennwerte: '+transl_text[load_case] )
+             
+            lc = getattr(self._spannung, transl[load_case])
+            if lc == None:
+                lc = LoadCase(Q.Stress(0.0, 'N/mm^2'), Q.Stress(0.0, 'N/mm^2'), None)
+            stress.add_entry(name=transl[load_case]+'_min', 
+                             description=transl[load_case]+': Minimum', quantity=lc.min)
+            stress.add_entry(name=transl[load_case]+'_max', 
+                             description=transl[load_case]+': Maximum', quantity=lc.max)
+            olc = Q.String(lc.overload_case) if lc.overload_case != None else Q.String('')
+            stress.add_entry(name=transl[load_case]+'_overload_case', 
+                             description='Ueberlastfall  [FKM2003-4.4.2]', quantity=olc)
+            stress.add_entry(name=transl[load_case]+'_median', 
+                             description=transl[load_case]+': Mittelwert', quantity=lc.median)
+            stress.add_entry(name=transl[load_case]+'_amplitude', 
+                             description=transl[load_case]+': Amplitude', quantity=lc.amplitude)
+            
+            
+            if (fkm['static/stress/' + transl[load_case]+'_min'] > stress[transl[load_case]+'_min']) or \
+               (fkm['static/stress/' + transl[load_case]+'_max'] < stress[transl[load_case]+'_max']):
+                raise ParaDInF_tools_FKM_Error, 'stress: fatigue stress is more extreme as the extreme stress: %s' % transl[load_case]
+
+
+    def _calc_fatigue_nennspannung_material(self):
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        mattab.cd('materialtab')
+        mat = paradinf.paradin.Paradin(fkm)
+        mat.cd('fatigue')
+        mat.add_cd_subject_folder('material', 'Werkstoffkennwerte:   [FKM2003-1.2]')
+
+        mat.add_entry(name='sigma_W_zd',  description='sigma_W_zd:   [FKM2003 p47 eq2.2.1]',
+                    quantity=Q.Stress(mattab['f_W_sigma'].uval * fkm['static/material/Rm'].uval))
+        mat.add_entry(name='tau_W_s',  description='tau_W_s:   [FKM2003 p47 eq2.2.1]',
+                    quantity=Q.Stress(mattab['f_W_tau'].uval * mat['sigma_W_zd'].uval))
+
+
+    def _calc_fatigue_nennspannung_construction(self):
+        """Konstruktionskennwerte FKM2003 page 50ff   
+        """
+        
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        mattab.cd('materialtab')
+        mat = paradinf.paradin.Paradin(fkm)
+        mat.cd('fatigue/material')        
+        constr = paradinf.paradin.Paradin(self._paradin)
+        constr.cd('fatigue')
+        constr.add_cd_subject_folder('construction', 'Konstruktionskennwerte  [FKM2003-2.3]')
+
+        fkm.add_entry(set_as_default_only=True,
+                        name='K_V', description='K_V: Randschichtfaktor  [FKM2003-2.3.4]', 
+                        quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit)
+        fkm.add_entry(set_as_default_only=True,
+                        name='K_S', description='K_S: Schutzschichtfaktor  [FKM2003-2.3.4]', 
+                        quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit)
+        fkm.add_entry(set_as_default_only=True,
+                        name='K_NL_E', description='K_NL_E: Konstante fuer GG  [FKM2003-2.3.5]', 
+                        quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit)
+
+        
+        def _get_n_sigma(self, Gq_sigma):
+            """Stützzahlen für Normalspannungen FKM2003 page 51 eq 2.3.13ff
+            """
+            mattab = paradinf.paradin.Paradin(self._paradin)
+            mattab.cd('materialtab')
+            mat = paradinf.paradin.Paradin(self._paradin)
+            mat.cd('fatigue/material')
+            
+            if Gq_sigma < 0.0/Q.Distance(1.0, 'mm').uval:
+                raise ParaDInF_tools_FKM_Error, 'Gq_sigam < 0'
+            elif Gq_sigma <= 0.1/Q.Distance(1.0, 'mm').uval:  # 0.1 mmm^-1
+                return Q.Scalar(1.0 + (Gq_sigma * Q.Distance(1.0, 'mm').uval) * 10.0**(-(mattab['aG'].uval - 0.5 + fkm['static/material/Rm'].uval/mattab['bG'].uval).value))   #FKM2003 eq 2.3.13
+            elif Gq_sigma <= 1.0/Q.Distance(1.0, 'mm').uval:  # 1.0 mmm^-1
+                return Q.Scalar(1.0 + sqrt(Gq_sigma * Q.Distance(1.0, 'mm').uval) * 10.0**(-(mattab['aG'].uval + fkm['static/material/Rm'].uval/mattab['bG'].uval).value))  #FKM2003 eq 2.3.14
+            elif Gq_sigma <= 100.0/Q.Distance(1.0, 'mm').uval:  # 100.0 mmm^-1
+                return Q.Scalar(1.0 + (Gq_sigma* Q.Distance(1.0, 'mm').uval)**(1, 4) * 10.0**(-(mattab['aG'].uval + fkm['static/material/Rm'].uval/mattab['bG'].uval).value)) #FKM2003 eq 2.3.15
+            else:
+                raise ParaDInF_tools_FKM_Error, 'Gq_sigam out of Range'
+    
+    
+        def _get_n_tau(self, Gq_tau):
+            """Stützzahlen für Normalspannungen FKM2003 page 51 eq 2.3.13ff
+            """
+            mattab = paradinf.paradin.Paradin(self._paradin)
+            mattab.cd('materialtab')
+            mat = paradinf.paradin.Paradin(self._paradin)
+            mat.cd('fatigue/material')
+            if Gq_tau < 0.0/Q.Distance(1.0, 'mm').uval:
+                raise ParaDInF_tools_FKM_Error, 'Gq_sigam < 0'
+            elif Gq_tau <= 0.1/Q.Distance(1.0, 'mm').uval:  # 0.1 mmm^-1
+                return Q.Scalar(1.0 + (Gq_tau * Q.Distance(1.0, 'mm').uval) * 10.0**(-(mattab['aG'].uval - 0.5 + mattab['f_W_tau'].uval*fkm['static/material/Rm'].uval/mattab['bG'].uval).value))   #FKM2003 eq 2.3.13
+            elif Gq_tau <= 1.0/Q.Distance(1.0, 'mm').uval:  # 1.0 mmm^-1
+                return Q.Scalar(1.0 + sqrt(Gq_tau * Q.Distance(1.0, 'mm').uval) * 10.0**(-(mattab['aG'].uval + mattab['f_W_tau'].uval*fkm['static/material/Rm'].uval/mattab['bG'].uval).value))  #FKM2003 eq 2.3.14
+            elif Gq_tau <= 100.0/Q.Distance(1.0, 'mm').uval:  # 100.0 mmm^-1
+                return Q.Scalar(1.0 + (Gq_tau* Q.Distance(1.0, 'mm').uval)**(1, 4) * 10.0**(-(mattab['aG'].uval + mattab['f_W_tau'].uval*fkm['static/material/Rm'].uval/mattab['bG'].uval).value)) #FKM2003 eq 2.3.15
+            else:
+                raise ParaDInF_tools_FKM_Error, 'Gq_sigam out of Range'
+
+            
+        # Rauheitsfaktor FKM2003 page 54
+        constr.gui.add_entry_separator('sep_Rauheitsfaktor', 'Rauheitsfaktor  [FKM2003 page 54]')
+        if not fkm.property.exists_path('Rz') or not fkm.property.get_item('Rz')._SID.is_actual():
+            fkm.add_entry(name='Rz', description='Rz: Rauheit der Oberflaeche',
+                        quantity=Q.Distance(25.0, 'mu', displayUnit='mu'), forcePermit='must')
+        constr.add_entry(name='K_R_sigma', quantity=Q.Scalar(1.0 - mattab['a_R_sigma'].uval 
+                                        * log10(fkm['Rz'].uval / Q.Distance(1.0, 'mu').uval) 
+                                        * log10(2 * fkm['static/material/Rm'].uval / mattab['Rm_N_min'].uval), displayUnit='1.0'))
+        constr.add_entry(name='K_R_tau', quantity=Q.Scalar(1.0 - mattab['f_W_tau'].uval 
+                                        * mattab['a_R_sigma'].uval 
+                                        * log10(fkm['Rz'].uval / Q.Distance(1.0, 'mu').uval) 
+                                        * log10(2 * fkm['static/material/Rm'].uval / mattab['Rm_N_min'].uval), displayUnit='1.0'))
+
+        if self.formzahl == None:
+            raise ParaDInF_tools_FKM_Error, 'Formzahl fehlt: use k.set_formzahl(Formzahl_xxx(xx))'
+        
+        self.formzahl.gen_paradin('notch', constr)
+
+        # FKM2003 eq 2.3.10
+        constr.gui.add_entry_separator('sep_Kerbwirkungszahl', 'Kerbwirkungszahl  [FKM2003 page 51 eq 2.3.10]')
+        n_r = _get_n_sigma(self, self.formzahl.Gq_sigma_r).uval if hasattr(self.formzahl, 'Gq_sigma_r') else uval.UVal(1.0)
+        n_d = _get_n_sigma(self, self.formzahl.Gq_sigma_d).uval if hasattr(self.formzahl, 'Gq_sigma_d') else uval.UVal(1.0)
+
+        K_t = self.formzahl.K_t_zd.uval if hasattr(self.formzahl, 'K_t_zd') else uval.UVal(1e27)
+        constr.add_entry(name='K_f_zd', quantity=Q.Scalar(K_t / n_r, displayUnit='1.0'))
+
+        K_t = self.formzahl.K_t_b.uval if hasattr(self.formzahl, 'K_t_b') else uval.UVal(1e27)
+        constr.add_entry(name='K_f_b', quantity=Q.Scalar(K_t / (n_r * n_d), displayUnit='1.0'))
+
+        # FKM2003 eq 2.3.10
+        n_r = _get_n_tau(self, self.formzahl.Gq_tau_r).uval if hasattr(self.formzahl, 'Gq_tau_r') else uval.UVal(1.0)
+        n_d = _get_n_tau(self, self.formzahl.Gq_tau_d).uval if hasattr(self.formzahl, 'Gq_tau_d') else uval.UVal(1.0)
+
+        K_t = self.formzahl.K_t_s.uval if hasattr(self.formzahl, 'K_t_s') else uval.UVal(1e27)
+        constr.add_entry(name='K_f_s', quantity=Q.Scalar(K_t / (n_r), displayUnit='1.0'))
+
+        K_t = self.formzahl.K_t_t.uval if hasattr(self.formzahl, 'K_t_t') else uval.UVal(1e27)
+        constr.add_entry(name='K_f_t', quantity=Q.Scalar(K_t / (n_r * n_d), displayUnit='1.0'))
+
+        # Konstruktionsfaktor FKM2003 eq 2.3.1
+        constr.gui.add_entry_separator('sep_Konstruktionsfaktor', 'Konstruktionsfaktor  [FKM2003 eq 2.3.1]')
+        constr.add_entry(name='K_WK_zd', quantity=Q.Scalar((constr['K_f_zd'].uval + 1.0/constr['K_R_sigma'].uval - 1.0) * 1.0/(fkm['K_V'].uval*fkm['K_S'].uval*fkm['K_NL_E'].uval), displayUnit='1.0'))
+        constr.add_entry(name='K_WK_b', quantity=Q.Scalar((constr['K_f_b'].uval  + 1.0/constr['K_R_sigma'].uval - 1.0) * 1.0/(fkm['K_V'].uval*fkm['K_S'].uval*fkm['K_NL_E'].uval), displayUnit='1.0'))
+        constr.add_entry(name='K_WK_s', quantity=Q.Scalar((constr['K_f_s'].uval  + 1.0/constr['K_R_tau'].uval   - 1.0) * 1.0/(fkm['K_V'].uval*fkm['K_S'].uval), displayUnit='1.0'))
+        constr.add_entry(name='K_WK_t', quantity=Q.Scalar((constr['K_f_t'].uval  + 1.0/constr['K_R_tau'].uval   - 1.0) * 1.0/(fkm['K_V'].uval*fkm['K_S'].uval), displayUnit='1.0'))
+
+
+    def _calc_fatigue_nennspannung_component_strength(self):
+        """Bauteilfestigkeit FKM2003 page 57ff
+        """
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        mattab.cd('materialtab')
+        stress = paradinf.paradin.Paradin(fkm)
+        stress.cd('fatigue/stress')           
+        mat = paradinf.paradin.Paradin(fkm)
+        mat.cd('fatigue/material')        
+        constr = paradinf.paradin.Paradin(fkm)
+        constr.cd('fatigue/construction')
+        comp = paradinf.paradin.Paradin(fkm)
+        comp.cd('fatigue')
+        comp.add_cd_subject_folder('component_strength', 'Bauteilfestigkeit  [FKM2003-2.4]')
+        
+        comp.add_entry(name='K_E_sigma', description='K_E_sigma: Eingenspannungsfaktor  [FKM2003 2.4.2.3]', 
+                       quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit) # Eingenspannungsfaktor FKM2003 2.4.2.3
+        comp.add_entry(name='K_E_tau',   description='K_E_tau: Eingenspannungsfaktor  [FKM2003 2.4.2.3]', 
+                       quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit)
+        
+        comp.gui.add_entry_separator('sep_Betriebsfestigkeitsfaktor', 'Betriebsfestigkeitsfaktor  [FKM2003 page 64]')
+        comp.add_entry(name='K_BK_zd',   quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit) # FKM2003 page 64: dauerfest
+        comp.add_entry(name='K_BK_b',    quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit)
+        comp.add_entry(name='K_BK_s',    quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit)
+        comp.add_entry(name='K_BK_t',    quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit)
+
+        # Mittelspannungsfaktor FKM2003 page 58
+        def _get_K_AK(self, load_case):
+            """FKM2003 page """
+    
+            def mittelSpaFaktor_F1(self, load_case):
+                """ Mittelspannungsfaktor K_AK: Überlastfall 1: Mittelspannung = const
+                FKM2003 page 60 eq 2.4.14 ff
+                """
+                lc_tab = {'zd':self._spannung.S_x_zd, 'b':self._spannung.S_x_b, 's':self._spannung.T_x_s, 't':self._spannung.T_x_t}
+                S_WK_tab = {'zd':comp['S_WK_zd'], 'b':comp['S_WK_b'], 's':comp['T_WK_s'], 't':comp['T_WK_t']}
+                S_m = lc_tab[load_case].get_median().uval
+    
+                if load_case in ('zd', 'b'):
+                    K_E = comp['K_E_sigma'].uval
+                    M = comp['M_sigma'].uval
+                    s_m = S_m / (K_E * S_WK_tab[load_case].uval)
+                    if s_m < -1.0/(1.0-M):
+                        return Q.Scalar(1.0 / (1.0-M))
+                    elif s_m <= 1.0/(1.0+M):
+                        return Q.Scalar(1.0 - M*s_m)
+                    elif s_m < (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar((1.0+M/3.0)/(1.0+M) - M/3.0*s_m)
+                    elif  s_m >= (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                    else:
+                        raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F1 sigma'
+                elif load_case in ('s', 't'):
+                    K_E = comp['K_E_tau'].uval
+                    M = comp['M_tau'].uval
+                    s_m = S_m / (K_E * S_WK_tab[load_case].uval)
+                    if s_m < uval.UVal(0.0):
+                        raise ParaDInF_tools_FKM_Error, ('t_s < 0')
+                    elif s_m < 1.0/(1.0+M):
+                        return Q.Scalar(1.0 - M*s_m)
+                    elif s_m < (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar((1.0+M/3.0)/(1.0+M) - M/3.0*s_m)
+                    elif  s_m >= (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                    else:
+                        raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F1 tau'
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F1: stressKind: sigma | tau'
+    
+    
+            def mittelSpaFaktor_F2(self, load_case):
+                """Mittelspannungsfaktor: Überlastfall 2: Spannungsverhältniss = const
+                FKM2003 page 59 eq 2.4.9 ff
+    
+                """
+                lc_tab = {'zd':self._spannung.S_x_zd, 'b':self._spannung.S_x_b, 's':self._spannung.T_x_s, 't':self._spannung.T_x_t}
+                S_m = lc_tab[load_case].get_median().uval
+                S_a = lc_tab[load_case].get_amplitude().uval
+                if abs(S_m + S_a) > Q.Stress(1e-12, 'N/mm^2').uval:
+                    R = (S_m - S_a) / (S_m + S_a)  # FKM2003 page 41 fig 2.1.1
+                else:
+                    R = (S_m - S_a) / Q.Stress(1e-12).uval
+    
+                if load_case in ('zd', 'b'):
+                    M = comp['M_sigma'].uval
+                    if R > uval.UVal(1.0):    # Druckbereich
+                        return Q.Scalar(1.0 / (1.0-M))
+                    elif R <= uval.UVal(0.0): # Druckwechsel-, Wechsel-, Zugwechselbereich
+                        return Q.Scalar(1.0 / (1.0 + M * S_m / S_a))
+                    elif R < uval.UVal(0.5):  # niedriger Zugschwellbereich
+                        return Q.Scalar(((1.0+M/3.0)/(1.0+M)) / (1.0 + M/3.0 * S_m / S_a))
+                    elif R >= uval.UVal(0.5): # niedriger Zugschwellbereich
+                        return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                    else:
+                        raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F2 sigma: R=%s' % R
+                elif load_case in ('s', 't'):
+                    M = comp['M_tau'].uval
+                    if R < uval.UVal(-1.0):
+                        raise ParaDInF_tools_FKM_Error, ('R < -1')
+                    elif R <= uval.UVal(0.0): # Druckwechsel-, Wechsel-, Zugwechselbereich
+                        return Q.Scalar(1.0 / (1.0 + M * S_m / S_a))
+                    elif R < uval.UVal(0.5):  # niedriger Zugschwellbereich
+                        return Q.Scalar(((1.0+M/3.0)/(1.0+M)) / (1.0 + M/3.0 * S_m / S_a))
+                    elif R >= uval.UVal(0.5): # niedriger Zugschwellbereich
+                        return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                    else:
+                        raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F2 tau: R=%s' % R
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F2: stressKind: sigma | tau'
+    
+    
+            def mittelSpaFaktor_F3(self, load_case):
+                """ Mittelspannungsfaktor: Überlastfall 3: ST_min = const
+                FKM2003 page 60 eq 2.4.18 ff
+                """
+                lc_tab = {'zd':self._spannung.S_x_zd, 'b':self._spannung.S_x_b, 's':self._spannung.T_x_s, 't':self._spannung.T_x_t}
+                S_WK_tab = {'zd':comp['S_WK_zd'], 'b':comp['S_WK_b'], 's':comp['T_WK_s'], 't':comp['T_WK_t']}
+                S_min = lc_tab[load_case].get_min().uval
+    
+                if load_case in ('zd', 'b'):
+                    K_E = comp['K_E_sigma'].uval
+                    M = comp['M_sigma'].uval
+                    s_min = S_min / (K_E * S_WK_tab[load_case].uval)
+                    if s_min < -2.0/(1.0-M):
+                        return Q.Scalar(1.0 / (1.0-M))
+                    elif s_min <= uval.UVal(0.0):
+                        return Q.Scalar((1.0- M*s_min) / (1.0 + M))
+                    elif s_min < 2.0/3.0 * (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar(((1.0+M/3.0)/(1.0+M) - M/3.0*s_min)/(1.0+M/3.0))
+                    elif  s_min >= 2.0/3.0 * (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                    else:
+                        raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F3 sigma'
+                elif load_case in ('s', 't'):
+                    K_E = comp['K_E_tau'].uval
+                    M = comp['M_tau'].uval
+                    s_min = S_min / (K_E * S_WK_tab[load_case].uval)
+                    if s_min < uval.UVal(-1.0):
+                        raise ParaDInF_tools_FKM_Error, ('t_min < -1')
+                    elif s_min <= uval.UVal(0):
+                        return Q.Scalar((1.0- M*s_min) / (1.0 + M))
+                    elif s_min < 2.0/3.0 * (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar(((1.0+M/3.0)/(1.0+M) - M/3.0*s_min)/(1.0+M/3.0))
+                    elif  s_min >= 2.0/3.0 * (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                    else:
+                        raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F3 tau'
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F3: stressKind: sigma | tau'
+    
+            def mittelSpaFaktor_F4(self, load_case):
+                """ Mittelspannungsfaktor: Überlastfall 4: S_max = const
+                FKM2003 page 61 eq 2.4.22 ff
+                """
+                lc_tab = {'zd':self._spannung.S_x_zd, 'b':self._spannung.S_x_b, 's':self._spannung.T_x_s, 't':self._spannung.T_x_t}
+                S_WK_tab = {'zd':comp['S_WK_zd'], 'b':comp['S_WK_b'], 's':comp['T_WK_s'], 't':comp['T_WK_t']}
+                S_max = lc_tab[load_case].get_max().uval
+    
+                if load_case in ('zd', 'b'):
+                    K_E = comp['K_E_sigma'].uval
+                    M = comp['M_sigma'].uval
+                    s_max = S_max / (K_E * S_WK_tab[load_case].uval)
+                    if s_max < uval.UVal(0.0):
+                        return Q.Scalar(1.0 / (1.0-M))
+                    elif s_max <= 2.0/(1.0+M):
+                        return Q.Scalar((1.0- M*s_max) / (1.0 - M))
+                    elif s_max < 4.0/3.0 * (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar(((1.0+M/3.0)/(1.0+M) - M/3.0*s_max)/(1.0-M/3.0))
+                    elif  s_max >=  4.0/3.0 * (3.0+M)/(1.0+M)**2:
+                        return Q.Scalar((3.0 + M) / (3.0*(1.0+M)**2))
+                    else:
+                        raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F4 sigma'
+                elif load_case in ('s', 't'):
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F4 tau: not possible'
+                else:
+                    raise ParaDInF_tools_FKM_Error, 'FKM_MittelSpaFaktor_F4: stressKind: sigma | tau'
+    
+            lc_tab = {'zd':self._spannung.S_x_zd, 'b':self._spannung.S_x_b, 's':self._spannung.T_x_s, 't':self._spannung.T_x_t}
+            olc_tab = {'F1':mittelSpaFaktor_F1, 'F2':mittelSpaFaktor_F2, 'F3':mittelSpaFaktor_F3, 'F4':mittelSpaFaktor_F4, None:lambda s, x: Q.Scalar(1.0)}
+    
+            if lc_tab[load_case] == None:
+                ret = Q.Scalar(1.0)
+            else:
+                ret = olc_tab[lc_tab[load_case].overload_case](self, load_case)
+            ret.set_displayUnit('1.0')
+            return ret 
+
+
+        # Bauteilwechselfestigkeit FKM2003 eq2.4.1
+        comp.gui.add_entry_separator('sep_BauteilWechselfestigkeit', 'Bauteil-Wechselfestigkeit  [FKM2003 page 57]')
+        comp.add_entry(name='S_WK_zd', quantity=Q.Stress(mat['sigma_W_zd'].uval / constr['K_WK_zd'].uval))
+        comp.add_entry(name='S_WK_b',  quantity=Q.Stress(mat['sigma_W_zd'].uval / constr['K_WK_b'].uval))
+        comp.add_entry(name='T_WK_s',  quantity=Q.Stress(mat['tau_W_s'].uval    / constr['K_WK_s'].uval))
+        comp.add_entry(name='T_WK_t',  quantity=Q.Stress(mat['tau_W_s'].uval    / constr['K_WK_t'].uval))
+
+        comp.gui.add_entry_separator('sep_Mittelspannungsfaktor', 'Mittelspannungsfaktor  [FKM2003 page 59]')
+        # FKM2003 page 62 eq 2.4.34
+        comp.add_entry(name='M_sigma', quantity=Q.Scalar(mattab['aM'].uval * 1.0e-3 * fkm['static/material/Rm'].uval / Q.Stress(1.0, 'N/mm^2').uval + mattab['bM'].uval, displayUnit='1.0'))
+
+        # FKM2003 page 62 eq 2.4.34
+        comp.add_entry(name='M_tau', quantity=Q.Scalar(mattab['f_W_tau'].uval * comp['M_sigma'].uval, displayUnit='1.0'))
+
+        # FKM2003 page page 59
+        comp.add_entry(name='K_AK_zd', quantity=_get_K_AK(self, 'zd'))
+        comp.add_entry(name='K_AK_b',  quantity=_get_K_AK(self, 'b'))
+        comp.add_entry(name='K_AK_s',  quantity=_get_K_AK(self, 's'))
+        comp.add_entry(name='K_AK_t',  quantity=_get_K_AK(self, 't'))
+
+        # FKM2003 eq 2.4.6
+        comp.gui.add_entry_separator('sep_DauerBetriebsfestigkeit', 'Bauteil Dauerfestigkeit  [FKM2003 page 58 ep 2.4.6]')
+        comp.add_entry(name='S_AK_zd', quantity=Q.Stress(comp['K_AK_zd'].uval * comp['K_E_sigma'].uval * comp['S_WK_zd'].uval))
+        comp.add_entry(name='S_AK_b',  quantity=Q.Stress(comp['K_AK_b'].uval  * comp['K_E_sigma'].uval * comp['S_WK_b'].uval))
+        comp.add_entry(name='T_AK_s',  quantity=Q.Stress(comp['K_AK_s'].uval  * comp['K_E_tau'].uval   * comp['T_WK_s'].uval))
+        comp.add_entry(name='T_AK_t',  quantity=Q.Stress(comp['K_AK_t'].uval  * comp['K_E_tau'].uval   * comp['T_WK_t'].uval))
+
+        # FKM2003 ep 2.4.41
+        comp.gui.add_entry_separator('sep_BauteilBetriebsfestigkeit', 'Bauteil Betriebsfestigkeit  [FKM2003 page 63 ep 2.4.41]')
+        comp.add_entry(name='S_BK_zd', quantity=Q.Stress(comp['K_BK_zd'].uval * comp['S_AK_zd'].uval))
+        comp.add_entry(name='S_BK_b',  quantity=Q.Stress(comp['K_BK_b'].uval  * comp['S_AK_b'].uval))
+        comp.add_entry(name='T_BK_s',  quantity=Q.Stress(comp['K_BK_s'].uval  * comp['T_AK_s'].uval))
+        comp.add_entry(name='T_BK_t',  quantity=Q.Stress(comp['K_BK_t'].uval  * comp['T_AK_t'].uval))
+
+
+    
+    def _calc_fatigue_nennspannung_verification(self):
+        """        """
+        fkm = self._paradin
+        mattab = paradinf.paradin.Paradin(fkm)
+        mattab.cd('materialtab')
+        fat = paradinf.paradin.Paradin(fkm)
+        fat.cd('fatigue')     
+        stress = paradinf.paradin.Paradin(fkm)
+        stress.cd('fatigue/stress')   
+        mat = paradinf.paradin.Paradin(fkm)
+        mat.cd('fatigue/material')        
+        constr = paradinf.paradin.Paradin(fkm)
+        constr.cd('fatigue/construction')
+        comp = paradinf.paradin.Paradin(fkm)
+        comp.cd('fatigue/component_strength')
+        veri = paradinf.paradin.Paradin(fkm)
+        veri.cd('fatigue')
+        veri.add_cd_subject_folder('verification', 'Nachweis  [FKM2003-2.6]')
+        
+        fkm.add_entry(set_as_default_only=True,
+                name='j_D', description='j_D: Grundsicherheitsfaktor  [FKM2003-2.5]', 
+                quantity=Q.Scalar(1.5, displayUnit='1.0'), forcePermit='must')
+        
+
+        veri.add_entry(name='K_T_D', description='K_T_D: Temperaturfaktor  [FKM2003-2.2.3]', 
+                      quantity=Q.Scalar(1.0, displayUnit='1.0'), forcePermit=self.default_items_forcePermit)
+        veri.add_entry(name='j_ges', quantity=Q.Scalar(fkm['j_D'].uval / veri['K_T_D'].uval, displayUnit='1.0'))
+        
+        # FKM2003 eq 2.6.3
+        veri.add_entry(name='a_BK_zd', quantity=Q.Scalar(stress['S_x_zd_amplitude'].uval / (comp['S_BK_zd'].uval / veri['j_ges'].uval), displayUnit='1.0'))
+        veri.add_entry(name='a_BK_b',  quantity=Q.Scalar(stress['S_x_b_amplitude'].uval /  (comp['S_BK_b'].uval /  veri['j_ges'].uval), displayUnit='1.0'))
+        veri.add_entry(name='a_BK_s',  quantity=Q.Scalar(stress['T_x_s_amplitude'].uval /  (comp['T_BK_s'].uval /  veri['j_ges'].uval), displayUnit='1.0'))
+        veri.add_entry(name='a_BK_t',  quantity=Q.Scalar(stress['T_x_t_amplitude'].uval /  (comp['T_BK_t'].uval /  veri['j_ges'].uval), displayUnit='1.0'))
+
+        # FKM2003 eq 2.6.6
+        veri.add_entry(name='s_a', quantity=(veri['a_BK_zd'] + veri['a_BK_b']))
+        veri.add_entry(name='t_a', quantity=(veri['a_BK_s'] + veri['a_BK_t']))
+
+        # FKM2003 eq 2.6.5
+        s_a = veri['s_a'].uval
+        veri.add_entry(name='a_NH', quantity=Q.Scalar(1.0/2.0*(abs(s_a) + sqrt(s_a**2 + 4.0*veri['t_a'].uval**2)), displayUnit='1.0'))
+        veri.add_entry(name='a_GH', quantity=Q.Scalar(sqrt(s_a**2 + veri['t_a'].uval**2), displayUnit='1.0'))
+
+        # FKM2003 eq 2.6.4
+        q = (sqrt(3.0) - (1.0/mattab['f_W_tau'].uval))/(sqrt(3.0)-1.0)  # FKM2003 eq 2.6.7
+        veri.add_entry(name='a_BK_Sv', quantity=Q.Scalar(q * veri['a_NH'].uval + (1.0 - q)* veri['a_GH'].uval, displayUnit='1.0'))
+        
+        fat.add_entry(name='utilisation', quantity=veri['a_BK_Sv'])
+        if fat['utilisation'] <= Q.Scalar(1.0):
+            fat.set_status('utilisation', status='OK')
+            fat.set_infotext('utilisation', text=None)        
+        else:
+            fat.set_status('utilisation', status='ERROR')
+            fat.set_infotext('utilisation', text='max utilisation = 100%')        
+
+
+
+# + ----------------------------------------------------------------------
+class _Spannung(object):
+    """ """
+
+    def __init__(self):
+        self.S_x_zd = None
+        self.S_x_b = None
+        self.T_x_s = None
+        self.T_x_t = None
+
+
+    def set_spannung(self, load_case, ST_min=None, ST_max=None, overload_case=None):
+        transl = {'zd':'S_x_zd', 'b':'S_x_b', 's':'T_x_s', 't':'T_x_t'}
+        if ST_min == None: ST_min = Q.Stress(0.0)
+        if ST_max == None: ST_max = Q.Stress(0.0)
+        lc = LoadCase(ST_min=ST_min, ST_max=ST_max, overload_case=overload_case)
+        setattr(self, transl[load_case], lc) # FKM2003 page 58ff
+
+
+    def list(self):
+        for n, o in self.__dict__.iteritems():
+            print '%10s = %s' % (n, o)
+
+
+# test -------------------------------------------------------------------
+def _setup_doctest():
+    paradinf.Q.Quantity.set_displayUnitSystem('mechanicalEngineering')
+
+def _test():
+    import doctest
+    _setup_doctest()
+    doctest.testmod()
+
+# ------------------------------------------------------------------------
+if __name__ == '__main__':
+    from paradinf import loggingconf
+    loggingconf.loggingconf('../logging.confX')
+
+    _test()
+
+
+#eof ###########################################################################
