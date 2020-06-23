@@ -14,7 +14,12 @@ from .oil import Oil
 #from .orifice import OrificeTurbulent
 
 def signTrue(x):
-    return 1. if x>=0 else -1.
+    return 1. if x >= 0 else -1.
+
+def sg(x):
+    return x if x >= ETQ.Scalar(0.) else ETQ.Scalar(0.)
+
+
 
 
 class ProportionalValve:
@@ -24,7 +29,7 @@ class ProportionalValve:
         """
 flowrate_nominal:
 pressuredrop_tot_nominal:
-underlap1:  uv where critical lapp
+underlap1:  uv where critical lap
 
 """
         self.flowrate_nominal = Q.Flowrate(flowrate_nominal)
@@ -134,5 +139,44 @@ Fluid: {s.fluid}
             return -self.Cv1 * xV0 / (2.* functions.sqrt(pB0 - pT))
         else:
             return self.Cv1 * xV0 / (2.* functions.sqrt(pS - pB0))
+
+
+    def flow(self, xVn, pA=None, pB=None, pL=None, pS=None, pT=None):
+        """
+        Jelali page 59 eq 4.2, 4.3
+        assumption: all Cv are equal
+
+        xVn ... spool position -1..1
+
+        >>> valve = ProportionalValve(flowrate_nominal=ETQ.Flowrate(20, 'Liter/min'), pressuredrop_tot_nominal=ETQ.Pressure(70, 'bar'), underlap1=0.1)
+        >>> QA, QB = valve.flow(0., pL=ETQ.Pressure(0.,'bar'), pS=ETQ.Pressure(70.,'bar'), pT=ETQ.Pressure(0.,'bar'))
+        >>> print(QA)
+           0     Liter/min (Flowrate)
+        >>> print(QB)
+           0     Liter/min (Flowrate)
+        >>> QA, QB = valve.flow(0.1, pL=ETQ.Pressure(0.,'bar'), pS=ETQ.Pressure(70.,'bar'), pT=ETQ.Pressure(0.,'bar'))
+        >>> print(QA)
+           3.64  Liter/min (Flowrate)
+        >>> print(QB)
+          -3.64  Liter/min (Flowrate)
+        >>> QA, QB = valve.flow(-0.1, pL=ETQ.Pressure(0.,'bar'), pS=ETQ.Pressure(70.,'bar'), pT=ETQ.Pressure(0.,'bar'))
+        >>> print(QA)
+          -3.64  Liter/min (Flowrate)
+        >>> print(QB)
+           3.64  Liter/min (Flowrate)
+        """
+        xVn = ETQ.Scalar(xVn)
+        xVn = functions.limitTo(xVn, ETQ.Scalar(-1.), ETQ.Scalar(1.))
+        if pL and (pA is None and pB is None):
+            pA = ETQ.Pressure((pS + pT)/2 + pL/2)
+            pB = ETQ.Pressure((pS + pT)/2 - pL/2)
+            ETQ.logging.info("pA={} pB={}".format(pA, pB))
+        Q1 = ETQ.Flowrate(self.Cv1*sg( xVn + self.underlap1)*functions.sqrtSigned(pS-pA))
+        Q2 = ETQ.Flowrate(self.Cv1*sg(-xVn + self.underlap1)*functions.sqrtSigned(pA-pT))
+        Q3 = ETQ.Flowrate(self.Cv1*sg(-xVn + self.underlap1)*functions.sqrtSigned(pS-pB))
+        Q4 = ETQ.Flowrate(self.Cv1*sg( xVn + self.underlap1)*functions.sqrtSigned(pB-pT))
+        QA = Q1 - Q2
+        QB = Q3 - Q4
+        return QA, QB #, (Q1, Q2, Q3, Q4)
 
 # eof

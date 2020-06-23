@@ -215,6 +215,10 @@ class Frequency(QuantityFloat):
     _uval_units = {'second':-1}
 
 
+    def convert2VelocityAngular(self):
+        return VelocityAngular(self.get_value('Hz') * 2 * scipy.constants.pi, 'rad/sec')
+
+
 ################################################################################
 class Mass(QuantityFloat):
     """Quantity  mass"""
@@ -623,11 +627,15 @@ class Velocity(QuantityFloat):
 class VelocityAngular(QuantityFloat):
     """Quantity Angular Velocity"""
     _isoUnit = 'rad/sec'
-    _units = {'rad/sec':1.0, '1/sec':1.0}
+    _units = {'rad/sec':1.0}  #  dangerous, '1/sec':1.0}
     _uval_units = {'second':-1}
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'rad/sec',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
     _unitsPreferred = ['rad/sec']
+
+    def convert2Frequency(self):
+        return Frequency(self.get_value('rad/sec') / (2* scipy.constants.pi), 'Hz')
+
 
 
 ################################################################################

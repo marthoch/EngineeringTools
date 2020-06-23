@@ -291,6 +291,21 @@ def sqrt(uvalue):
         raise EngineeringTools_tools_Error_units('type not recognized: {}'.format(type(uvalue)))
 
 
+def sqrtSigned(val):
+    """square root of uval, wurzel, keeping the sign
+
+    >>> a = ETQ.Area(4, 'm2')
+    >>> sqrtSigned(a)
+    UVal(2.0, {'meter': Fraction(1, 1)})
+
+    >>> a = ETQ.Area(-4, 'm2')
+    >>> sqrtSigned(a)
+    UVal(-2.0, {'meter': Fraction(1, 1)})
+
+    """
+    return val.sign()*sqrt(val.abs())
+
+
 def log10(scalar):
     """log to basis 10
     """
@@ -331,6 +346,15 @@ def exp(scalar):
         return ETQ.UVal(_np.exp(scalar.get_value()), {})
     else:
         raise EngineeringTools_tools_Error_units('type not recognized: {}'.format(type(scalar)))
+
+
+
+def limitTo(x, limitLower, limitUpper):
+    if x < limitLower:
+        x = limitLower.set_properties_from(x)
+    elif x > limitUpper:
+        x = limitUpper.set_properties_from(x)
+    return x
 
 
 ################################################################################

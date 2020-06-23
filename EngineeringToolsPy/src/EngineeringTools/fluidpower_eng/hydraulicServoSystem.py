@@ -60,9 +60,9 @@ class HydraulicServoSystem__Jelali_4_(Obj):
 
 
     def omegah__Jelali_4_247(self, xP, mass):
-        return functions.sqrt(self.cylinder.areaP**2 / mass *
+        return ETQ.VelocityAngular(functions.sqrt(self.cylinder.areaP**2 / mass *
                           ( self.fluid.bulkmodulus / self.cylinder.volume_A(xP) +
-                            self.cylinder.areaRatio**2 * self.fluid.bulkmodulus / self.cylinder.volume_B(xP) ))
+                            self.cylinder.areaRatio**2 * self.fluid.bulkmodulus / self.cylinder.volume_B(xP) )))
 
     def Dh__Jelali_4_248(self, xP, xV , pS, pT, pA0, pB0, mass):
         a = self.cylinder.areaRatio

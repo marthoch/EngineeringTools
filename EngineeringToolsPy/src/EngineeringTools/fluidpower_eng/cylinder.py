@@ -6,19 +6,19 @@ __email__   = "marthoch@users.noreply.github.com"
 __license__ = "BSD 3-clause"
 
 from .. import quantities as Q # depricated
-from .. import quantities as ETQ
+#from .. import quantities as ETQ
 from ..tools import geo_circle
-from EngineeringTools.tools import functions
+from EngineeringTools.tools import functions 
 from .oil import Oil
 
 
 class Cylinder:
-    def __init__(self, D=None, stroke_length=None, stroke_range=None, dA=0.0, dB=0.0, V0=None, V0A=None, V0B=None, A=None, AA=None, AB=None, kind=None, name=None, nominalPressure=None):
+    def __init__(self, D=None, stroke_length=None, stroke_range=None, dA=None, dB=None, V0=None, V0A=None, V0B=None, A=None, AA=None, AB=None, kind=None, name=None, nominalPressure=None):
         self.kind = kind
         self.name = name
-        self.pistion_diameter = D
-        self.rod_diameter_A = dA
-        self.rod_diameter_B = dB
+        self.pistion_diameter = D if D else Q.Distance(0,'m')
+        self.rod_diameter_A = dA if dA else Q.Distance(0,'m')
+        self.rod_diameter_B = dB if dB else Q.Distance(0,'m')
         self.fluid = Oil()
 
         if stroke_range:
@@ -31,7 +31,7 @@ class Cylinder:
             self.stroke_length = stroke_length
             self.position_lowerLimit = Q.Distance(-self.stroke_length.uval / 2.)
             self.position_upperLimit = Q.Distance(self.stroke_length.uval / 2.)
-        if not (self.position_lowerLimit < self.position_upperLimit):  # pylint: disable=unneeded-not
+        if not (self.position_lowerLimit < self.position_upperLimit):  # pylint: disable=unneeded-not,superfluous-parens
             raise Exception('lower stroke limit must be smaller as the upper')
 
         if nominalPressure:
@@ -86,7 +86,7 @@ piston area B         = {pistonAreaB}
 
     def validPosition(self, position):
         position = Q.Distance(position)
-        if not (self.position_lowerLimit <= position <= self.position_upperLimit):
+        if not (self.position_lowerLimit <= position <= self.position_upperLimit): # pylint: disable=unneeded-not,superfluous-parens
             raise Exception('position is out of range')
         return position
 
@@ -118,7 +118,7 @@ piston area B         = {pistonAreaB}
 
     @property
     def forceNominal(self):
-        return {'A':self.force(pA=self.nominalPressure, pB=Q.Pressure(0.,'bar')), 'B':self.force(pA=Q.Pressure(0.,'bar'), pB=self.nominalPressure)  }
+        return {'A':self.force(pA=self.nominalPressure, pB=Q.Pressure(0.,'bar')), 'B':self.force(pA=Q.Pressure(0.,'bar'), pB=self.nominalPressure)}
 
     def stiffness(self, position):
         position = Q.Distance(position)

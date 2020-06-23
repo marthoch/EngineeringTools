@@ -432,6 +432,12 @@ class Quantity:
             raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch("{} * {}  {}".format(self, obj, type(obj)))
 
 
+    def __neg__(self):
+        ret = self.__class__(self)
+        ret._value = -self._value
+        return ret
+
+
     def __mul__(self, obj):
         """self * obj
 
@@ -865,6 +871,14 @@ class Quantity:
                                                                 (other.__class__.__name__, self.__class__.__name__))
 
 
+    def set_properties_from(self, obj):
+        if isinstance(obj, self.__class__):
+            self.set_displayUnit(obj.get_displayUnit())
+        else:
+            raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch(
+                    '%s :: %s' % (type(obj), type(self)))
+
+
 ################################################################################
 class QuantityNumeric(Quantity):
     """base class for all numeric type quantities """
@@ -1018,6 +1032,43 @@ class QuantityFloat(QuantityNumeric):
         value = self.get_value(unit)
         value = qnt.quant(value, method=method, precision=precision)
         self.set_value(value, unit)
+
+
+    def sign(self):
+        """
+        >>> from EngineeringTools.quantities.quantitiesbase import *
+        >>> from EngineeringTools.quantities.mechanics import *
+
+        >>> d = Force(123, 'N');
+        >>> d.sign()
+        1.0
+        
+        >>> d = Force(-123, 'N');
+        >>> d.sign()
+        -1.0
+        
+        """
+        return np.sign(self.get_value())
+
+
+    def abs(self):
+        """
+        >>> from EngineeringTools.quantities.quantitiesbase import *
+        >>> from EngineeringTools.quantities.mechanics import *
+
+        >>> d = Force(123, 'N');
+        >>> d.abs()
+        quantities.Force(value=123.0, unit='N', displayUnit='kN')
+        
+        >>> d = Force(-123, 'N');
+        >>> d.abs()
+        quantities.Force(value=123.0, unit='N', displayUnit='kN')
+        
+        """        
+        x = self.copy()
+        x.set_value(np.abs(x.get_value()))
+        return x    
+    
 
 
 ###############################################################################
