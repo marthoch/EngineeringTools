@@ -35,7 +35,8 @@ https://en.wikipedia.org/wiki/Electric_current
 https://en.wikipedia.org/wiki/Ampere
 """
     _isoUnit = 'A'
-    _displayUnitSystemList = {'mechanicalEngineering':{'str_quantization':{'method':'1r', 'precision':3}}}
+    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'A',
+                                                       'str_quantization':{'method':'1r', 'precision':3}}}
     _units = {'A':1.0, 'kA':1000.0, 'mA':1.0e-3}
     _uval_units = {'ampere':1}
     _unitsPreferred = ['A', 'kA', 'mA']
