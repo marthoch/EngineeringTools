@@ -879,6 +879,12 @@ class Quantity:
                     '%s :: %s' % (type(obj), type(self)))
 
 
+    def abs(self):
+        obj = self.copy()
+        obj._value = np.abs(obj._value)
+        return obj
+
+
 ################################################################################
 class QuantityNumeric(Quantity):
     """base class for all numeric type quantities """
