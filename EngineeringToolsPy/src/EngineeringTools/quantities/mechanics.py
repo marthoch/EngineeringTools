@@ -513,7 +513,7 @@ class TemperatureAbsolute(QuantityFloatOffset):
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'degC',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
     _units = {'K':(1.0, 0.0), 'degC':(1.0, 273.15), 'degF':(5.0/9.0, 459.67)}
-    _uval_units = {'kelvin':0}
+    _uval_units = {'kelvin':1}
     _unitsPreferred = ['K', 'degC']
 
     def __add__(self, obj):

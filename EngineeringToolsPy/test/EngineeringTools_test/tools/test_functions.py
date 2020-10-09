@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pylint: disable-msg=line-too-long,missing-function-docstring,missing-class-docstring,empty-docstring,bad-whitespace
+# pylint: disable-msg=line-too-long,missing-function-docstring,missing-class-docstring,empty-docstring
 
 __author__  = 'Martin Hochwallner <marthoch@users.noreply.github.com>'
 __email__   = "marthoch@users.noreply.github.com"
@@ -30,10 +30,20 @@ class Test(unittest.TestCase):
             ETF.power(2., "a")
         self.assertEqual(ETF.power(3., 2.), 9.)
         self.assertEqual(ETF.power(3, 2), 9.)
+        self.assertEqual(ETF.power(3, -2.), 1/9.)
+
         self.assertEqual(ETF.power(ETQ.Distance(2., 'm').uval, 2), ETQ.Distance(2., 'm').uval*ETQ.Distance(2., 'm').uval)
         self.assertEqual(ETF.power(ETQ.Distance(2., 'm'), 2),      ETQ.Distance(2., 'm').uval*ETQ.Distance(2., 'm').uval)
         self.assertEqual(ETF.power(ETQ.Distance(2., 'm'), ETQ.Number(2)),      ETQ.Distance(2., 'm').uval*ETQ.Distance(2., 'm').uval)
         self.assertEqual(ETF.power(ETQ.Distance(2., 'm'), ETQ.Scalar(2.)),     ETQ.Distance(2., 'm').uval*ETQ.Distance(2., 'm').uval)
+
+
+    def test_physical_constants(self):
+        with self.assertRaises(KeyError):
+            ETF.physical_constants('test')
+        self.assertEqual(ETF.physical_constants('Stefan-Boltzmann constant'), 5.670374419e-08*ETQ.Power(1,'W')/ETQ.Area(1,'m2')/ETQ.TemperatureAbsolute(1,'K')/ETQ.TemperatureAbsolute(1,'K')/ETQ.TemperatureAbsolute(1,'K')/ETQ.TemperatureAbsolute(1,'K'))  # (5.670374419e-08, 'W m^-2 K^-4', 0.0)
+        ETF.physical_constants('hyperfine transition frequency of Cs-133')
+        ETF.physical_constants('conventional value of von Klitzing constant')
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

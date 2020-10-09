@@ -10,6 +10,7 @@
 >>> qnt.FORMAT_DEFAULT['decimalPosition'] = 4
 >>> qnt.FORMAT_DEFAULT['thousands_sep'] = ''
 """
+from statsmodels.sandbox.distributions.sppatch import expect
 
 __author__  = 'Martin Hochwallner <marthoch@users.noreply.github.com>'
 __email__   = "marthoch@users.noreply.github.com"
@@ -29,6 +30,7 @@ if __name__ == '__main__':
 
 # $Source$
 
+from fractions import Fraction
 import numpy as _np
 from .. import quantities as ETQ
 
@@ -356,9 +358,12 @@ def power(value, exp):
     if isinstance(exp, (ETQ.Number, ETQ.Scalar)):
         exp = exp.get_value()
 
-    if isinstance(value, (float, int)) and isinstance(exp, (float, int)):
+    if isinstance(exp, int):
+        exp = float(exp)
+
+    if isinstance(value, (float, int)) and isinstance(exp, float):
         return _np.power(value, exp)
-    elif isinstance(value, ETQ.UVal) and isinstance(exp, (float, int)):
+    elif isinstance(value, ETQ.UVal) and isinstance(exp, float):
         units = {k:v*exp for k,v in value._units.items()}
         return ETQ.UVal(_np.power(value.get_value(), exp), units)
     else:
@@ -372,6 +377,35 @@ def limitTo(x, limitLower, limitUpper):
     elif x > limitUpper:
         x = limitUpper.set_properties_from(x)
     return x
+
+
+def physical_constants(name):
+    """return a physical constant from sp.constants.physical_constants as uval
+    """
+    unittable = {'m':ETQ.UVal(1, {'meter':Fraction(1,1)}),
+                 'K':ETQ.UVal(1, {'kelvin':Fraction(1,1)}),
+                 'W':ETQ.Power(1, 'W').uval,
+                 'Hz':ETQ.Frequency(1,'Hz').uval,
+                 'ohm':ETQ.Resistance(1,'Ohm').uval}
+    try:
+        import scipy as _sp
+        phConst = _sp.constants.physical_constants[name]
+    except KeyError as e:
+        raise e
+
+    value = phConst[0]
+    unitStr = phConst[1]
+    ul = unitStr.split(' ')
+    uval = ETQ.UVal(value, {})
+    for ui in ul:
+        ux = ui.split('^')
+        if len(ux) < 2:
+            ux.append(1)
+        try:
+            uval *= power(unittable[ux[0]], int(ux[1]))
+        except KeyError:
+            raise KeyError('{} : {}'.format(ux[0], ui))
+    return uval
 
 
 ################################################################################

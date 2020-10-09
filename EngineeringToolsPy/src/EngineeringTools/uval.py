@@ -3,6 +3,7 @@
 """do calculation with check of units
 
 """
+from builtins import isinstance
 __author__  = 'Martin Hochwallner <marthoch@users.noreply.github.com>'
 __email__   = "marthoch@users.noreply.github.com"
 __license__ = "BSD 3-clause"
@@ -350,7 +351,7 @@ class UVal:
             >>> print(U1 == 0.0)
             Traceback (most recent call last):
             ...
-            EngineeringTools.uval.EngineeringTools_uval_Error: units do not match
+            EngineeringTools.uval.EngineeringTools_uval_Error: units do not match: 1.000 {m} != 0.0
 
         """
         if isinstance(obj, self.__class__):
@@ -396,11 +397,13 @@ class UVal:
     def __eq__(self, obj):
         if obj is None:
             return False
+        if isinstance(obj, base.Quantity):
+            obj = obj.uval
         if isinstance(obj, self.__class__):
             self.check_units(obj._units)
             return self._value == obj._value
         else:
-            raise EngineeringTools_uval_Error('units do not match')
+            raise EngineeringTools_uval_Error('units do not match: {} != {}'.format(self, obj))
 
 
     def __ne__(self, obj):
