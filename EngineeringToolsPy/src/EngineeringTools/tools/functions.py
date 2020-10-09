@@ -10,7 +10,6 @@
 >>> qnt.FORMAT_DEFAULT['decimalPosition'] = 4
 >>> qnt.FORMAT_DEFAULT['thousands_sep'] = ''
 """
-from statsmodels.sandbox.distributions.sppatch import expect
 
 __author__  = 'Martin Hochwallner <marthoch@users.noreply.github.com>'
 __email__   = "marthoch@users.noreply.github.com"
