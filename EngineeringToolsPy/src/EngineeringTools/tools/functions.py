@@ -348,6 +348,23 @@ def exp(scalar):
         raise EngineeringTools_tools_Error_units('type not recognized: {}'.format(type(scalar)))
 
 
+def power(value, exp):
+    """  value**exp
+    """
+    if isinstance(value, ETQ.QuantityNumeric):
+        value = value.uval
+    if isinstance(exp, (ETQ.Number, ETQ.Scalar)):
+        exp = exp.get_value()
+
+    if isinstance(value, (float, int)) and isinstance(exp, (float, int)):
+        return _np.power(value, exp)
+    elif isinstance(value, ETQ.UVal) and isinstance(exp, (float, int)):
+        units = {k:v*exp for k,v in value._units.items()}
+        return ETQ.UVal(_np.power(value.get_value(), exp), units)
+    else:
+        raise EngineeringTools_tools_Error_units('type not recognized: {}, {}'.format(type(value), type(exp)))
+
+
 
 def limitTo(x, limitLower, limitUpper):
     if x < limitLower:
