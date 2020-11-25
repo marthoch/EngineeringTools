@@ -10,6 +10,7 @@ __license__ = "BSD 3-clause"
 import math
 import os
 import sys
+from fractions import Fraction
 import unittest
 
 ppath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'src') 
@@ -189,7 +190,10 @@ class TestSequenceFunctions(unittest.TestCase):
         # wrong unit
         #self.assertEqual(qtest.convert2iso(True, 'XXX'), True)
 
-
+    def test__pow(self):
+        d = ETQ.Distance(2, 'm')
+        self.assertEqual(d**2, ETQ.UVal(4,{'meter': Fraction(2, 1)}))
+        self.assertEqual(ETQ.Area(4, 'm2')**(1/2), ETQ.UVal(2,{'meter': Fraction(1, 1)}))
 
     def test__1(self): 
         Q.Quantity.set_displayUnitSystem('mechanicalEngineering')

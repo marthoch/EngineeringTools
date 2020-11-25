@@ -67,6 +67,7 @@ __license__ = "BSD 3-clause"
 import numbers
 import logging
 import numpy as np
+import numpy as _np
 
 # run doctest, workaround relative import
 if __name__ == '__main__':
@@ -82,7 +83,7 @@ if __name__ == '__main__':
 
 from ..uval import UVal
 from .. import qnt
-
+from .. import quantities as ETQ
 
 
 DEFAULT_STR_QUANTIZATION = {'method':'1r', 'precision':3}
@@ -473,7 +474,7 @@ class Quantity:
         return self.__mul__(obj)
 
 
-    def __pow__(self, obj):
+    def __pow__(self, exp):
         """ self ** obj
 
         >>> from EngineeringTools.quantities.quantitiesbase import *
@@ -483,13 +484,32 @@ class Quantity:
         UVal(4.0, {'meter': Fraction(2, 1)})
 
         >>> s1 = Scalar(2., '1')
-        >>> # d1 ** s1  # FIXIT:
+        >>> d1 ** s1
+        UVal(4.0, {'meter': Fraction(2, 1)})
+        
+        >>> d2 = Distance(4.0, 'm')
+        >>> s2 = Scalar(0.5, '1')
+        >>> d2 ** s2
+        UVal(2.0, {'meter': Fraction(1, 2)})
+        
         """
-        if isinstance(obj, Quantity):
-            return self.uval ** obj.uval
+        if isinstance(self, QuantityNumeric):
+            value = self.uval
         else:
-            return self.uval ** obj
+            raise Exception("not supported")
+        if isinstance(exp, (ETQ.Number, ETQ.Scalar)):
+            exp = exp.get_value()
 
+        if isinstance(exp, int):
+            exp = float(exp)
+    
+        if isinstance(value, (float, int)) and isinstance(exp, float):
+            return _np.power(value, exp)
+        elif isinstance(value, UVal) and isinstance(exp, float):
+            units = {k:v*exp for k,v in value._units.items()}
+            return UVal(_np.power(value.get_value(), exp), units)
+        else:
+            raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch('type not recognized: {}, {}'.format(type(value), type(exp)))
 
 
     def __truediv__(self, obj):
