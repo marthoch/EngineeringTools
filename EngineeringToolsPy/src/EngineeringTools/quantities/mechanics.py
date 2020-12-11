@@ -29,6 +29,7 @@ if __name__ == '__main__':
 
 import math
 import scipy.constants
+import numpy as _np
 from .quantitiesbase import Quantity, QuantityFloat, QuantityFloatOffset, QuantityInt, QuantityDecimal, QuantityBoolean, QuantityString, ParaDInF_quantity_Error, ParaDInF_quantity_ErrorQuantitiesDoNotMatch
 from ..uval import UVal, EngineeringTools_uval_Error
 
@@ -47,6 +48,28 @@ class Acceleration(QuantityFloat):
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
     _units = {'m/s2':1.0, 'm/sec^2':1.0, 'g':scipy.constants.g}
     _uval_units = {'meter':1, 'second':-2}
+
+
+
+################################################################################
+class AccelerationAngular(QuantityFloat):
+    """Quantity Angular Acceleration
+
+    >>> wdt = AccelerationAngular(VelocityAngular(3, 'rad/sec') / Duration(1, 'sec')); print(wdt)
+       3.00  rad/sec2 (AccelerationAngular)
+    >>> wdt = AccelerationAngular(VelocityAngular(2*_np.pi, 'rad/sec') / Duration(1, 'sec')); wdt.set_displayUnit('rot/sec2'); print(wdt)
+       1.00  rot/sec2 (AccelerationAngular)
+    >>> wdt = AccelerationAngular(VelocityAngular(2*_np.pi, 'rad/sec') / Duration(1, 'sec')); wdt.set_displayUnit('rpm/sec'); print(wdt)
+      60.0   rpm/sec (AccelerationAngular)
+    """
+    _isoUnit = 'rad/sec2'
+    _units = {'rad/sec2':1.0, 'rot/sec2':(2*_np.pi), 'rpm/sec':(2*_np.pi)/60}
+    _uval_units = {'second':-2}
+    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'rad/sec2',
+                                                       'str_quantization':{'method':'1r', 'precision':3}}}
+    _unitsPreferred = ['rad/sec2']
+
+
 
 ################################################################################
 class Angle(QuantityDecimal):
@@ -412,6 +435,10 @@ class Speed(QuantityFloat):
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
     _units = {'1/s':1.0, '1/sec':1.0, 'Hz':1.0, 'rpm':1.0/60.0}
     _uval_units = {'second':-1}
+    
+    def convert2Frequency(self):
+        return Frequency(self.get_value('rad/sec') / (2* scipy.constants.pi), 'Hz')    
+    
 
 ################################################################################
 class Stress(QuantityFloat):
@@ -631,9 +658,21 @@ class Velocity(QuantityFloat):
 
 ################################################################################
 class VelocityAngular(QuantityFloat):
-    """Quantity Angular Velocity"""
+    """Quantity Angular Velocity
+
+    >>> w = VelocityAngular(2*_np.pi, 'rad/sec'); print (w)
+       6.28  rad/sec (VelocityAngular)
+    >>> print(w.convert2Frequency())
+       1.00  Hz (Frequency)
+    >>> print(w.convert2Speed())
+      60.0   rpm (Speed)
+    >>> w.set_displayUnit('rot/sec'); print(w)
+       1.00  rot/sec (VelocityAngular)
+    >>> w.set_displayUnit('rpm'); print(w)
+      60.0   rpm (VelocityAngular)
+    """
     _isoUnit = 'rad/sec'
-    _units = {'rad/sec':1.0}  #  dangerous, '1/sec':1.0}
+    _units = {'rad/sec':1.0, 'rot/sec':(2*_np.pi), 'rpm':(2*_np.pi)/60}
     _uval_units = {'second':-1}
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'rad/sec',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
@@ -642,6 +681,8 @@ class VelocityAngular(QuantityFloat):
     def convert2Frequency(self):
         return Frequency(self.get_value('rad/sec') / (2* scipy.constants.pi), 'Hz')
 
+    def convert2Speed(self):
+        return Speed(self.get_value('rad/sec') / (2* scipy.constants.pi), 'Hz')
 
 
 ################################################################################

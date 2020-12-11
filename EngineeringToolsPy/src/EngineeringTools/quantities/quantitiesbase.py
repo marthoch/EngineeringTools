@@ -786,6 +786,7 @@ class Quantity:
                 self._str_quantization = None
         else:
             raise ParaDInF_quantity_ErrorUnitNotFound('unit "{:s}" is not available. Use: {}.'.format(displayUnit, ', '.join(self._units.keys())))
+        # return self  # FIXME: better or not?
 
 
     def copy(self):
