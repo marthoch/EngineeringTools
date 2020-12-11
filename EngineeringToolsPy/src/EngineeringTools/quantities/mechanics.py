@@ -243,11 +243,17 @@ class MomentOfAreaFirst(QuantityFloat):
 class MomentOfInertiaOfMass(QuantityFloat):
     """Quantity  moment of inertia of mass
 
-    >>> print((MomentOfInertiaOfMass(Mass(1.,'g')*Distance(1.,'cm')**2)))
+    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'m')**2); J.set_displayUnit('kg.m^2'); print(J)
+       1.00  kg.m^2 (MomentOfInertiaOfMass)
+    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'cm')**2); J.set_displayUnit('kg.cm^2'); print(J)
+       1.00  kg.cm^2 (MomentOfInertiaOfMass)
+    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'mm')**2); J.set_displayUnit('kg.mm^2'); print(J)
+       1.00  kg.mm^2 (MomentOfInertiaOfMass)
+    >>> J = MomentOfInertiaOfMass(Mass(1.,'g')*Distance(1.,'cm')**2); J.set_displayUnit('g.cm^2'); print(J)
        1.00  g.cm^2 (MomentOfInertiaOfMass)
     """
     _isoUnit = 'kg.m^2'
-    _units = {'kg.m^2':1.0, 'kg.mm^2':1.0e-6, 'g.cm^2':1.0e-7}
+    _units = {'kg.m^2':1.0, 'kg.cm^2':1.0e-4, 'kg.mm^2':1.0e-6, 'g.cm^2':1.0e-7}
     _uval_units = {'meter':2, 'kilogram':1}
 
 
