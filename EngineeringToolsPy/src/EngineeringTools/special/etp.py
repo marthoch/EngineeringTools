@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # pylint: disable=line-too-long,wrong-import-position,abstract-method,no-else-return
+from statsmodels.tsa.tests.test_x13 import dataset
+from h5py._hl.dataset import Dataset
 
 __author__  = 'Martin Hochwallner <marthoch@users.noreply.github.com>'
 __email__   = "marthoch@users.noreply.github.com"
@@ -97,21 +99,48 @@ p0:             {me.p0}
 
 
 
-class ETP_EXPRESS:
+class ETPHydrHubShaftConnection:
     """
     https://etp.se/sites/default/files_two/ETP-EXPRESS-PRODUCT-SHEET.pdf
     """
-    filename = os.path.join(os.path.dirname(__file__), r'ETP_EXPRESS.txt')
-    database = pd.read_csv(filename, skiprows=4, sep=r'\s*;\s*', index_col=0, engine='python')
+    filename = os.path.join(os.path.dirname(__file__), r'ETPHydrHubShaftConnection.txt')
 
-    def __init__(self, id=None, d=None):
+    @classmethod
+    def read_database(cls):
+        """read the database from the file """
+        cls.database = pd.read_csv(cls.filename, skiprows=4, sep=r'\s*;\s*', index_col=0, engine='python')
 
-        if id:
-            dataset = self.database.loc[id]
-        elif d:
-            dataset = self.database[self.database['d'] == d].iloc[0]
+    @classmethod
+    def search(cls, kind=None, d=None, D=None, minT=None):
+        datasets = cls.database
+        if kind:
+            datasets = datasets[datasets['kind'] == kind]
+        if d:
+            if isinstance(d, ETQ.Distance):
+                d = d.get_value('mm')
+            datasets = datasets[datasets['d'] == d]
+        if D:
+            if isinstance(D, ETQ.Distance):
+                D = D.get_value('mm')
+            datasets = datasets[datasets['D'] == D]
+        if minT:
+            if isinstance(minT, ETQ.Torque):
+                minT = minT.get_value('N.m')
+            datasets = datasets[datasets['T'] >= minT]
+        return datasets.sort_values( ['d', 'D','L1','m'])
+
+
+    def __init__(self, name=None, kind=None, d=None, D=None, minT=None):
+
+        if name:
+            dataset = self.database.loc[name]
         else:
-            raise Exception()
+            datasets = self.search(d=d)
+            if len(datasets) == 1:
+                dataset = datasets.iloc[0]
+            else:
+                print(datasets)
+                raise Exception('More or less than one products fit the parameters, use search method')
         self.dataset = dataset
         self.name   = dataset.name
         self.length = ETQ.Distance(dataset['L'], 'mm')
@@ -159,11 +188,8 @@ Torque:         {me.torque}
 
     __repr__ = __str__
 
-
-
     @classmethod
     def list_all(cls):
-        #database = pd.read_csv(cls.filename, skiprows=3, sep=r'\s*;\s*', index_col=0, engine='python')
         return cls.database #.index()
 
 #     def clamp_force(self, pressure):
@@ -173,5 +199,8 @@ Torque:         {me.torque}
 #     def clamp_pressure_needed(self, force):
 #         force = ETQ.Force(force)
 #         return ETQ.Pressure(force / (self.active_area*self.friction_coefficient_design)  + self.p0.uval)
+
+ETPHydrHubShaftConnection.read_database()
+
 
 #eof
