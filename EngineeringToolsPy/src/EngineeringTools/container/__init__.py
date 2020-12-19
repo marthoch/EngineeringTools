@@ -20,7 +20,7 @@ class Obj:
         return self._name
 
     @name.setter
-    def set_name(self, name):
+    def name(self, name):
         self._name = name
 
     def __format__(self, format_spec):
@@ -33,7 +33,10 @@ class Obj:
         variables = self.get_variables()
         txt = ''
         if self._name:
-            txt += '{}:  \n'.format(self._name)
+            if isinstance(self._name, ETQ.String):
+                txt += '{}:  \n'.format(self._name.value.format(self=self))
+            else:
+                txt += '{}:  \n'.format(self._name.format(self=self))
         txt += '\n'.join(['{:20s} = {:s}'.format(k, v if v else 'None') for k, v in variables.items()])
         return txt
 
@@ -42,7 +45,10 @@ class Obj:
         #html = """<font face="monospace">\n"""
         html = ''
         if self._name:
-            html += '<h2>{} </h2> \n'.format(self._name)
+            if isinstance(self._name, ETQ.String):
+                html += '<h2>{} </h2> \n'.format(self._name.value.format(self=self))
+            else:
+                html += '<h2>{} </h2> \n'.format(self._name.format(self=self))
         html += """<table border="1">\n"""
         for  k, v in self.get_variables().items():
             if isinstance(v, Obj):
