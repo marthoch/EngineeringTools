@@ -435,10 +435,10 @@ class Speed(QuantityFloat):
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
     _units = {'1/s':1.0, '1/sec':1.0, 'Hz':1.0, 'rpm':1.0/60.0}
     _uval_units = {'second':-1}
-    
+
     def convert2Frequency(self):
-        return Frequency(self.get_value('rad/sec') / (2* scipy.constants.pi), 'Hz')    
-    
+        return Frequency(self.get_value('1/s'), 'Hz')
+
 
 ################################################################################
 class Stress(QuantityFloat):

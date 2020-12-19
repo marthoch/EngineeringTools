@@ -11,13 +11,40 @@ from .. import quantities as ETQ
 
 
 class Obj:
+
+    def __init__(self, name=None):
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def set_name(self, name):
+        self._name = name
+
+    def __format__(self, format_spec):
+        return self.__str__()
+
+    def get_variables(self):
+        return {key: value for key, value in vars(self).items() if not key.startswith('_')}
+
     def __str__(self):
-        return '\n' + '\n'.join(['{:20s} = {:s}'.format(k, v) for k, v in vars(self).iteritems()])
+        variables = self.get_variables()
+        txt = ''
+        if self._name:
+            txt += '{}:  \n'.format(self._name)
+        txt += '\n'.join(['{:20s} = {:s}'.format(k, v if v else 'None') for k, v in variables.items()])
+        return txt
+
 
     def _repr_html_(self):
         #html = """<font face="monospace">\n"""
-        html = """<table border="1">\n"""
-        for  k, v in vars(self).items():
+        html = ''
+        if self._name:
+            html += '<h2>{} </h2> \n'.format(self._name)
+        html += """<table border="1">\n"""
+        for  k, v in self.get_variables().items():
             if isinstance(v, Obj):
                 html += """<tr>
 <td>{:s}</td>
@@ -48,7 +75,7 @@ class Obj:
         flat=True: flatten if object contains object.
         """
         d = {}
-        for  k, v in vars(self).items():
+        for  k, v in self.get_variables().items():
             if prefix:
                 k = '{}{}{}'.format(prefix, sep, k)
             if isinstance(v, Obj):
@@ -62,18 +89,37 @@ class Obj:
 
 
 
-class REQ:
+class REQ(Obj):
 
-    def __init__(self, text=None):
-        self.text = text
+    def __init__(self, text=None, reqid=None):
+        super().__init__(None)
+        self._text = text
+        self._reqid = reqid
+
+    @property
+    def reqid(self):
+        return self._reqid
+
+    @property
+    def text(self):
+        return self._text
 
     def __str__(self):
-        return self.text.format(self)
+        txt = ''
+        if self._reqid:
+            txt += '{}: '.format(self._reqid)
+        txt += self.text.format(self=self)
+        return txt
 
     __repr__ = __str__
 
     def _repr_html_(self):
-        return "<h1>" + str(self) + "</h1>"
-
+        txt = '<h1> '
+        if self._reqid:
+            txt += '{}: '.format(self._reqid)
+        txt += self._text.format(self=self)
+        txt += "</h1> \n"
+        txt += super()._repr_html_()
+        return txt
 
 #eof
