@@ -230,11 +230,19 @@ class Force(QuantityFloat):
 
 ################################################################################
 class Frequency(QuantityFloat):
-    """Quantity  frequency"""
+    """Quantity  frequency
+    >>> print(Frequency(1, 'kHz'))
+    1000     Hz (Frequency)
+    >>> print(Frequency(1, 'MHz'))
+    1000000     Hz (Frequency)
+    >>> print(Frequency(1, 'GHz'))
+    1000000000     Hz (Frequency)
+
+    """
     _isoUnit = '1/s'
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'Hz',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
-    _units = {'1/s':1.0, '1/sec':1.0, 'Hz':1.0}
+    _units = {'1/s':1.0, '1/sec':1.0, 'Hz':1.0, 'kHz':1e3, 'MHz':1e6, 'GHz':1e9}
     _uval_units = {'second':-1}
 
 
