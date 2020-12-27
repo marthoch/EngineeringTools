@@ -46,28 +46,28 @@ class Obj:
         html = ''
         if self._name:
             if isinstance(self._name, ETQ.String):
-                html += '<h2>{} </h2> \n'.format(self._name.value.format(self=self))
+                html += '<h4 style="text-align:left">{} </h4> \n'.format(self._name.value.format(self=self))
             else:
-                html += '<h2>{} </h2> \n'.format(self._name.format(self=self))
+                html += '<h4 style="text-align:left">{} </h4> \n'.format(self._name.format(self=self))
         html += """<table border="1">\n"""
         for  k, v in self.get_variables().items():
             if isinstance(v, Obj):
                 html += """<tr>
-<td>{:s}</td>
+<td valign="top">{:s}</td>
 <td>{:s}</td>
 </tr>
 """.format(k, v._repr_html_())
 
             elif isinstance(v, ETQ.Quantity):
                 html += """<tr>
-<td>{:s}</td>
+<td valign="top">{:s}</td>
 <td style="text-align:left">{:s}</td>
 </tr>
 """.format(k, v._repr_html_())
 
             else:
                 html += """<tr>
-<td>{:s}</td>
+<td valign="top">{:s}</td>
 <td>{:s}</td>
 </tr>
 """.format(k, str(v).replace('\n', '<br>'))
@@ -120,11 +120,11 @@ class REQ(Obj):
     __repr__ = __str__
 
     def _repr_html_(self):
-        txt = '<h1> '
+        txt = '<h4 style="text-align:left"> '
         if self._reqid:
             txt += '{}: '.format(self._reqid)
         txt += self._text.format(self=self)
-        txt += "</h1> \n"
+        txt += "</h4> \n"
         txt += super()._repr_html_()
         return txt
 

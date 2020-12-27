@@ -73,11 +73,18 @@ class AccelerationAngular(QuantityFloat):
 
 ################################################################################
 class Angle(QuantityDecimal):
-    """Quantity  angle"""
+    """Quantity  angle
+    >>> print(Angle(360, 'deg', displayUnit='rot'))
+       1.000 rot (Angle)
+    >>> print(Angle(360*60, 'min', displayUnit='rot'))
+       1.000 rot (Angle)
+    >>> print(Angle(360*60*60, 'sec', displayUnit='rot'))
+       1.000 rot (Angle)
+    """
     _isoUnit = 'rad'
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'deg',
                                                        'str_quantization':{'method':'1', 'precision':3}}}
-    _units = {'rad':1.0, 'deg':math.pi/180, 'rot':2*math.pi}
+    _units = {'rad':1.0, 'deg':_np.pi/180, 'rot':2*math.pi, 'min':_np.pi/180/60, 'sec':_np.pi/180/60/60}
     _uval_units = {}
 
 
