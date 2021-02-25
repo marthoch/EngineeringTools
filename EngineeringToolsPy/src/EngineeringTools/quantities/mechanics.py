@@ -590,13 +590,22 @@ class TemperatureAbsolute(QuantityFloatOffset):
 
 ################################################################################
 class TemperatureDifferential(QuantityFloat):
-    """Quantity  temperatureDifferential"""
+    """Quantity  temperatureDifferential
+
+        >>> print(TemperatureDifferential(20.0, 'K'))
+          20.0   K (TemperatureDifferential)
+
+        >>> print(TemperatureDifferential(0.010, 'K', 'mK'))
+          10.0   mK (TemperatureDifferential)
+
+    """
     _isoUnit = 'K'
-    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'C',
+    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'K',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
-    _units = {'K':1.0, 'degC':1.0, 'degF':5.0/9.0}
+    _units = {'K':1.0, 'mK':1e-3, 'degC':1.0, 'degF':5.0/9.0}
     _uval_units = {'kelvin':1}
     _unitsPreferred = ['K', 'degC']
+
 
 ################################################################################
 class Time(QuantityFloat):
