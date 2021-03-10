@@ -7,6 +7,7 @@ __license__ = "BSD 3-clause"
 
 # $Source$
 
+import numpy as _np
 from .. import quantities as ETQ
 
 
@@ -64,7 +65,14 @@ class Obj:
 <td style="text-align:left">{:s}</td>
 </tr>
 """.format(k, v._repr_html_())
-
+            elif isinstance(v, (list, _np.ndarray)) and isinstance(v[0], ETQ.Quantity):
+                txt = [vv._repr_html_() for vv in v]
+                txt = '<br>'.join(txt)
+                html += """<tr>
+<td valign="top">{:s}</td>
+<td style="text-align:left">{:s}</td>
+</tr>
+""".format(k, txt)
             else:
                 html += """<tr>
 <td valign="top">{:s}</td>
