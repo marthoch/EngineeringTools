@@ -159,6 +159,26 @@ class Density(QuantityFloat):
 
 
 ################################################################################
+class AreaDensity(QuantityFloat):
+    """Quantity area density
+
+    >>> print(AreaDensity(Mass(1, 'kg')/Area(1,'m2')))
+       1.00  kg/m2 (AreaDensity)
+    >>> d = AreaDensity(1.0, 'kg/m2')
+    >>> print(d)
+       1.00  kg/m2 (AreaDensity)
+    >>> print(d.get_str(unit='g/m2'))
+    1000     g/m2    (AreaDensity)
+    """
+    _isoUnit = 'kg/m2'
+    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'kg/m2',
+                                                       'str_quantization':{'method':'1r', 'precision':3}}}
+    _units = {'kg/m2':1.0, 'kg/m^2':1.0, 'g/m2':1.0e-3}
+    _uval_units = {'meter':-2, 'kilogram':1}
+
+
+
+################################################################################
 class Distance(QuantityDecimal):
     """quantity  distance
 
