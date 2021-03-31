@@ -388,7 +388,7 @@ class Quantity:
             ret = self.__class__(self)
             self.log.info('ignoring add nan')
         else:
-            raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch("{} * {}  {}".format(self, obj, type(obj)))
+            raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch("{} + {}  {}".format(self, obj, type(obj)))
         return ret
 
     def __sub__(self, obj):
@@ -430,7 +430,7 @@ class Quantity:
         elif isinstance(obj, UVal):
             return self.uval - obj
         else:
-            raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch("{} * {}  {}".format(self, obj, type(obj)))
+            raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch("{} - {}  {}".format(self, obj, type(obj)))
 
 
     def __neg__(self):
