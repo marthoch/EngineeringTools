@@ -1,6 +1,7 @@
 import logging
 import scipy as sp
 import scipy.signal as spsig
+import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -25,16 +26,23 @@ class ToolsTrace():
             filepos['Angle Measurement Points: length'] = filepos['Trace Points'] - filepos['Angle Measurement Points'] - 3
             filepos['Torque Measurement Points: length'] = filepos['Angle Measurement Points'] - filepos['Torque Measurement Points'] - 3
             filepos['Trace Points: length'] = filepos['StepResult'] - filepos['Trace Points'] - 3
+            filepos['StepResult: length'] =  len(txt) - filepos['StepResult'] - 1
+            #filepos['len'] =  len(txt)
         logging.debug(filepos)
+        #self.filepos = filepos
         
         self.df_Task = pd.read_csv(self.filename, header=1, nrows=1)
         self.df_TraceConversion = pd.read_csv(self.filename, header=4, nrows=1)
 
         self.df_TorqueMeasurementPoints = pd.read_csv(self.filename, header=filepos['Torque Measurement Points'], nrows=filepos['Torque Measurement Points: length'], engine='python', encoding="ascii", skip_blank_lines=False)
-        self.df_TorqueMeasurementPoints = self.df_TorqueMeasurementPoints.set_index('Name')
+        self.df_TorqueMeasurementPoints.set_index('Name', inplace=True)
         
         self.df_AngleMeasurementPoints = pd.read_csv(self.filename, header=filepos['Angle Measurement Points'], nrows=filepos['Angle Measurement Points: length'], engine='python', encoding="ascii", skip_blank_lines=False)
-        self.df_AngleMeasurementPoints = self.df_AngleMeasurementPoints.set_index('Name')
+        self.df_AngleMeasurementPoints.set_index('Name', inplace=True)
+        
+        self.df_StepResult = pd.read_csv(self.filename, header=filepos['StepResult'], nrows=filepos['StepResult: length'], engine='python', encoding="ascii", skip_blank_lines=False)
+        self.df_StepResult.set_index('StepNumber', inplace=True)
+        
         
         self.df_TracePointsRaw = pd.read_csv(self.filename, header=filepos['Trace Points'], nrows=filepos['Trace Points: length'], engine='python', encoding="ascii", skip_blank_lines=False)
         self.raw_AngleConversionFactor = self.df_TraceConversion['Angle Conversion Factor'][0]
@@ -47,9 +55,9 @@ class ToolsTrace():
         self.df_TracePoints['Angle Median in rot'] = self.df_TracePoints['Angle Median in deg'] / 360    
         self.df_TracePoints['Torque Min in Nm'] = self.df_TracePointsRaw['Torque Min'] * self.raw_TorqueConversionFactor
         self.df_TracePoints['Torque Max in Nm'] = self.df_TracePointsRaw['Torque Max'] * self.raw_TorqueConversionFactor
-        self.df_TracePoints['Torque Median in Nm'] = (self.df_TracePoints['Torque Min in Nm'] + self.df_TracePoints['Torque Max in Nm']) / 2
-        self.df_TracePoints.index = self.df_TracePoints.index * self.raw_TraceTimePerSample
-        self.df_TracePoints.index.name = 'Time in s'
+        self.df_TracePoints['Torque Median in Nm'] = (self.df_TracePoints['Torque Min in Nm'] + self.df_TracePoints['Torque Max in Nm']) / 2        
+        self.df_TracePoints['Time in s'] = self.df_TracePoints.index * self.raw_TraceTimePerSample
+        self.df_TracePoints.set_index('Time in s', inplace=True)
         
         s = self.df_TracePoints['Angle Median in rot'].diff(1) / self.raw_TraceTimePerSample
         s = spsig.medfilt(s)
@@ -98,7 +106,26 @@ class ToolsTrace():
 
     def title(self):
         return '{self.TaskName} {self.DateTime}'.format(self=self)
-    
+
+    def save2matlab(self, filename=None, print_help=False):
+        if filename is None:
+            filename = self.filename + '.mat'
+        df = self.df_TracePoints.copy()
+        df = df.reset_index()
+        df.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
+        dataML = {'TracePoints': df.to_dict("list")}
+        dataML['Task'] = self.df_Task.to_dict()
+        dataML['AngleMeasurementPoints'] = self.df_AngleMeasurementPoints.to_dict()
+        dataML['TorqueMeasurementPoints'] = self.df_TorqueMeasurementPoints.to_dict()
+        scipy.io.savemat(filename, dataML)
+        logging.info('saved data to :' + filename)
+
+        if print_help:
+            print("""matlab:
+t = load('{}')
+plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
+""".format(filename))
+
     def _TorqueMeasurementPointsWC(self):
         chained_assignment = pd.get_option('mode.chained_assignment')
         pd.set_option('mode.chained_assignment', None)
