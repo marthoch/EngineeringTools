@@ -41,6 +41,7 @@ class ToolsTrace():
         self.df_AngleMeasurementPoints.set_index('Name', inplace=True)
         
         self.df_StepResult = pd.read_csv(self.filename, header=filepos['StepResult'], nrows=filepos['StepResult: length'], engine='python', encoding="ascii", skip_blank_lines=False)
+        self.df_StepResult.rename(str.strip, axis='columns', inplace=True)
         self.df_StepResult.set_index('StepNumber', inplace=True)
         
         
@@ -174,6 +175,11 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
             ax.legend().set_visible(False)
             for t in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Time'] != 0.0]['Time']:
                 ax.axvline(x=t, alpha=0.2, color='red')
+            for index, row in self.df_StepResult.iterrows():
+                #print(index)
+                t = row['StartTime']            
+                ax.axvline(x=t, alpha=0.2, color='red')
+            
         
         fig.set_size_inches(np.r_[250, 250 / 1.4] / 25.4)
         fig.tight_layout(pad=3, w_pad=1.0, h_pad=1.0)
@@ -186,7 +192,7 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
         else:
             fig, ax = plt.subplots(1, 1)
         fig.canvas.set_window_title('{} Trace Angle Plot'.format(self.title()))
-            
+
         selfrace = self.TracePoints.copy()
         anglemax = self.TracePoints['Angle Median in deg'].max()
         selfrace['Angle0 Median in deg'] = self.TracePoints['Angle Median in deg'] - anglemax
@@ -202,11 +208,17 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
             a = self.TorqueMeasurementPoints['Angle'][i] - anglemax
             c = TMP['color'][i]
             ax.axvline(x=a, alpha=0.3, color=c)
-    
+
         for i in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Torque'] != 0.0].index:
             T = self.TorqueMeasurementPoints['Torque'][i]
             c = TMP['color'][i]
             ax.axhline(y=T, alpha=0.3, color=c)
+
+        for index, row in self.df_StepResult.iterrows():
+            dp = self.df_TracePoints.iloc[self.df_TracePoints.index.get_loc(row['StartTime'], method='nearest')]
+            a = dp['Angle Median in deg'] - anglemax
+            ax.axvline(x=a, alpha=0.2, color='red')
+            ax.axhline(y=dp['Torque Median in Nm'], alpha=0.2, color='red')
     
         fig.set_size_inches(np.r_[250, 250 / 1.4] / 25.4)
         fig.tight_layout(pad=3, w_pad=1.0, h_pad=1.0)
