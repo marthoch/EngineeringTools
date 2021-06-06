@@ -690,9 +690,11 @@ class Velocity(QuantityFloat):
 
     >>> v=Velocity(1.0, 'c0'); print('%r' % v)
     quantities.Velocity(value=299792458.0, unit='m/sec', displayUnit='m/sec')
+    >>> print(Velocity(60.0, 'm/min'))
+       1.00  m/sec (Velocity)
     """
     _isoUnit = 'm/sec'
-    _units = {'m/sec':1.0, 'm/s':1.0, 'km/h':1000.0/(60*60), 'c0':299792458.0}
+    _units = {'m/sec':1.0, 'm/s':1.0, 'km/h':1000.0/(60*60), 'c0':299792458.0, 'm/min':1/60.}
     _uval_units = {'meter':1, 'second':-1}
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'m/sec',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
