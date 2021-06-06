@@ -38,7 +38,7 @@ class Obj:
                 txt += '{}:  \n'.format(self._name.value.format(self=self))
             else:
                 txt += '{}:  \n'.format(self._name.format(self=self))
-        txt += '\n'.join(['{:20s} = {:s}'.format(k, v if v else 'None') for k, v in variables.items()])
+        txt += '\n'.join(['{:20s} = {:s}'.format(str(k), str(v) if v else 'None') for k, v in variables.items()])
         return txt
 
 
@@ -50,8 +50,14 @@ class Obj:
                 html += '<h4 style="text-align:left">{} </h4> \n'.format(self._name.value.format(self=self))
             else:
                 html += '<h4 style="text-align:left">{} </h4> \n'.format(self._name.format(self=self))
+        html = self._repr_html_dict(self.get_variables(), html)
+        return html
+
+
+    def _repr_html_dict(self, data, html):
         html += """<table border="1">\n"""
-        for  k, v in self.get_variables().items():
+
+        for  k, v in data.items():
             if isinstance(v, Obj):
                 html += """<tr>
 <td valign="top">{:s}</td>
@@ -65,6 +71,7 @@ class Obj:
 <td style="text-align:left">{:s}</td>
 </tr>
 """.format(k, v._repr_html_())
+
             elif isinstance(v, (list, _np.ndarray)) and isinstance(v[0], ETQ.Quantity):
                 txt = [vv._repr_html_() for vv in v]
                 txt = '<br>'.join(txt)
@@ -73,6 +80,14 @@ class Obj:
 <td style="text-align:left">{:s}</td>
 </tr>
 """.format(k, txt)
+
+            elif isinstance(v, dict):
+                html += """<tr>
+<td valign="top">{:s}</td>
+<td style="text-align:left">{:s}</td>
+</tr>
+""".format(k, self._repr_html_dict(v, ""))
+
             else:
                 html += """<tr>
 <td valign="top">{:s}</td>
