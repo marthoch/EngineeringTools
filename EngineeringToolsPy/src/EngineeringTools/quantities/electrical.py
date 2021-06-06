@@ -9,7 +9,22 @@ __email__   = "marthoch@users.noreply.github.com"
 __license__ = "BSD 3-clause"
 
 
-__all__ = ["Voltage", "Current", "Resistance"]
+__all__ = ["Voltage", "Current", "Resistance", "Inductance", "MemorySize"]
+
+
+
+# run doctest, workaround relative import
+if __name__ == '__main__':
+    import sys
+    import doctest # pylint: disable=import-outside-toplevel
+    from EngineeringTools import quantities as ETQ             # pylint: disable=reimported,import-outside-toplevel
+    ETQ.Quantity.set_displayUnitSystem('mechanicalEngineering')
+    module_name = 'EngineeringTools.quantities.electrical'      # pylint: disable=invalid-name
+    module = __import__(module_name, fromlist=['*'], level=0)  # pylint: disable=invalid-name
+    module._setup_doctest()                                    # pylint: disable=protected-access
+    print(doctest.testmod(module, optionflags=doctest.ELLIPSIS))
+    sys.exit()
+
 
 
 from . import quantitiesbase as base
@@ -67,5 +82,50 @@ https://en.wikipedia.org/wiki/Henry_(unit)
     _units = {'H':1.0, 'mH':1.0e-3}
     _uval_units = {'meter':2, 'kilogram':1, 'second':-2, 'ampere':-2}
     _unitsPreferred = ['H', 'mH']
+
+
+
+
+################################################################################
+class MemorySize(base.QuantityFloat):  # FIXME: How to round, represent
+    """Quantity MemorySize
+
+    https://en.wikipedia.org/wiki/Megabyte
+
+    >>> print(MemorySize(1, 'Byte', displayUnit='Byte'))
+       1.000 Byte (MemorySize)
+    >>> print(MemorySize(1, 'KB', displayUnit='Byte'))
+    1000     Byte (MemorySize)
+    >>> print(MemorySize(1, 'KiB', displayUnit='Byte'))
+    1024     Byte (MemorySize)
+
+    >>> print(MemorySize(1.23456789, 'Byte'))
+       1.235 Byte (MemorySize)
+
+    >>> print(MemorySize(1.23456789, 'KiB'))
+       1.235 KiB (MemorySize)
+
+    """
+    _isoUnit = 'Byte'
+    _units = {'Byte':1, 'Bit8':1./8,
+              'KB':1000,    'KiB':2**10, 
+              'MB':1000**2, 'MiB':(2**10)**2,
+              'GB':1000**3, 'GiB':(2**10)**3,
+              'TB':1000**4, 'TiB':(2**10)**4,
+              'PB':1000**5, 'PiB':(2**10)**5}
+    _displayUnitSystemList = {'mechanicalEngineering':{'str_quantization':{'method':'1r', 'precision':4}}}
+    _uval_units = {}
+    _unitsPreferred = ['KiB', 'MiB', 'GiB', 'TiB']
+
+
+
+################################################################################
+# test
+################################################################################
+def _setup_doctest():
+    from EngineeringTools import quantities as ETQ # pylint: disable=reimported,import-outside-toplevel
+    ETQ.Quantity.set_displayUnitSystem('mechanicalEngineering')
+
+
 
 # eof
