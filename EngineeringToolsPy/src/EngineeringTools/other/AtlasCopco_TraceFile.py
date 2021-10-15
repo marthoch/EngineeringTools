@@ -9,8 +9,12 @@ import pandas as pd
 
 class ToolsTrace():
 
-    def __init__(self, filename):
+    def __init__(self, filename, direction=None):
         self.filename = filename
+        if direction in ('CW', 'CCW', None):
+            self.direction = direction
+        else:
+            logging.error('direction must be "CW", "CCW", or None (== CW) but was "{}"'.format(direction))
         self._read_file()
 
     def _read_file(self):
@@ -48,6 +52,8 @@ class ToolsTrace():
         self.df_TracePointsRaw = pd.read_csv(self.filename, header=filepos['Trace Points'], nrows=filepos['Trace Points: length'], engine='python', encoding="ascii", skip_blank_lines=False)
         self.raw_AngleConversionFactor = self.df_TraceConversion['Angle Conversion Factor'][0]
         self.raw_TorqueConversionFactor = self.df_TraceConversion['Torque Conversion Factor'][0]
+        if self.direction == 'CCW':
+            self.raw_TorqueConversionFactor *= -1.
         self.raw_TraceTimePerSample = self.df_TraceConversion['Trace Time per Sample'][0]
         self.df_TracePoints = pd.DataFrame()
         self.df_TracePoints['Angle Min in deg'] = self.df_TracePointsRaw['Angle Min'] * self.raw_AngleConversionFactor 
