@@ -9,8 +9,9 @@ import pandas as pd
 
 class ToolsTrace():
 
-    def __init__(self, filename, direction=None):
+    def __init__(self, filename, direction=None, traceName=None):
         self.filename = filename
+        self.traceName = traceName
         if direction in ('CW', 'CCW', None):
             self.direction = direction
         else:
@@ -103,16 +104,20 @@ class ToolsTrace():
         return self.df_TorqueMeasurementPoints    
     
     def __str__(self):
-        return """ToolsTrace(filename='{s.filename}') 
+        return """ToolsTrace(filename='{s.filename}')
+    Title              = '{title}'
     VirtualStationName = '{s.VirtualStationName}'
     TaskName           = '{s.TaskName}'
     Status / ResultOk  = {s.Status} / {s.ResultOk}
-    DateTime           = {s.DateTime}""".format(s=self)
+    DateTime           = {s.DateTime}""".format(s=self, title=self.title())
     
     __repr__ = __str__
 
     def title(self):
-        return '{self.TaskName} {self.DateTime}'.format(self=self)
+        if self.traceName:
+            return self.traceName
+        else:
+            return '{self.TaskName} {self.DateTime}'.format(self=self)
 
     def save2matlab(self, filename=None, print_help=False):
         if filename is None:
@@ -155,7 +160,7 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
             fig, axs = plt.subplots(3, 1, sharex=True)
         #fig.suptitle('{self.TaskName} {self.DateTime}'.format(self=self))
 
-        fig.canvas.set_window_title('{} Trace Plot'.format(self.title()))
+        fig.canvas.manager.set_window_title('{} Trace Plot'.format(self.title()))
 
         TMP = self._TorqueMeasurementPointsWC()
 
@@ -191,16 +196,17 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
 
         return fig
 
-    def plot_trace_angle(self, fig=None):
+    def plot_trace_angle(self, fig=None, angleOffsetDeg=None):
         if fig:
             ax = fig.axes[0]
         else:
             fig, ax = plt.subplots(1, 1)
-        fig.canvas.set_window_title('{} Trace Angle Plot'.format(self.title()))
+        fig.canvas.manager.set_window_title('{} Trace Angle Plot'.format(self.title()))
 
         selfrace = self.TracePoints.copy()
-        anglemax = self.TracePoints['Angle Median in deg'].max()
-        selfrace['Angle0 Median in deg'] = self.TracePoints['Angle Median in deg'] - anglemax
+        if not angleOffsetDeg:
+            angleOffsetDeg = -self.TracePoints['Angle Median in deg'].max()
+        selfrace['Angle0 Median in deg'] = self.TracePoints['Angle Median in deg'] + angleOffsetDeg
 
         selfrace.plot(ax=ax, x='Angle0 Median in deg', y='Torque Median in Nm', label=self.title())
         ax.grid(True, which='both')
@@ -210,7 +216,7 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
         TMP = self._TorqueMeasurementPointsWC()
 
         for i in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Angle'] != 0.0].index:
-            a = self.TorqueMeasurementPoints['Angle'][i] - anglemax
+            a = self.TorqueMeasurementPoints['Angle'][i] + angleOffsetDeg
             c = TMP['color'][i]
             ax.axvline(x=a, alpha=0.3, color=c)
 
@@ -221,7 +227,7 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
 
         for index, row in self.df_StepResult.iterrows():
             dp = self.df_TracePoints.iloc[self.df_TracePoints.index.get_loc(row['StartTime'], method='nearest')]
-            a = dp['Angle Median in deg'] - anglemax
+            a = dp['Angle Median in deg'] + angleOffsetDeg
             ax.axvline(x=a, alpha=0.2, color='red')
             ax.axhline(y=dp['Torque Median in Nm'], alpha=0.2, color='red')
 
