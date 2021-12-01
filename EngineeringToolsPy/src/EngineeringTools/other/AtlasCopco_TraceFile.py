@@ -31,7 +31,7 @@ class ToolsTrace():
             filepos['Angle Measurement Points: length'] = filepos['Trace Points'] - filepos['Angle Measurement Points'] - 3
             filepos['Torque Measurement Points: length'] = filepos['Angle Measurement Points'] - filepos['Torque Measurement Points'] - 3
             filepos['Trace Points: length'] = filepos['StepResult'] - filepos['Trace Points'] - 3
-            filepos['StepResult: length'] =  len(txt) - filepos['StepResult'] - 1
+            filepos['StepResult: length'] =  len(txt) - filepos['StepResult'] - 1 +1
             #filepos['len'] =  len(txt)
         logging.debug(filepos)
         #self.filepos = filepos
@@ -45,10 +45,12 @@ class ToolsTrace():
         self.df_AngleMeasurementPoints = pd.read_csv(self.filename, header=filepos['Angle Measurement Points'], nrows=filepos['Angle Measurement Points: length'], engine='python', encoding="ascii", skip_blank_lines=False)
         self.df_AngleMeasurementPoints.set_index('Name', inplace=True)
 
-        self.df_StepResult = pd.read_csv(self.filename, header=filepos['StepResult'], nrows=filepos['StepResult: length'], engine='python', encoding="ascii", skip_blank_lines=False)
-        self.df_StepResult.rename(str.strip, axis='columns', inplace=True)
-        self.df_StepResult.set_index('StepNumber', inplace=True)
-
+        if filepos['StepResult: length'] > 0:
+            self.df_StepResult = pd.read_csv(self.filename, header=filepos['StepResult'], nrows=filepos['StepResult: length'], engine='python', encoding="ascii", skip_blank_lines=False)
+            self.df_StepResult.rename(str.strip, axis='columns', inplace=True)
+            self.df_StepResult.set_index('StepNumber', inplace=True)
+        else:
+            self.df_StepResult = None
 
         self.df_TracePointsRaw = pd.read_csv(self.filename, header=filepos['Trace Points'], nrows=filepos['Trace Points: length'], engine='python', encoding="ascii", skip_blank_lines=False)
         self.raw_AngleConversionFactor = self.df_TraceConversion['Angle Conversion Factor'][0]
@@ -78,31 +80,31 @@ class ToolsTrace():
     @property
     def TaskName(self):
         return self.df_Task['TaskName'][0]
-    
+
     @property
     def Status(self):
         return self.df_Task['Status'][0]
-    
+
     @property
     def DateTime(self):
         return self.df_Task['DateTime'][0]
-    
+
     @property
     def ResultOk(self):
         return self.df_Task['ResultOk'][0]
-        
+
     @property
     def TracePoints(self):
         return self.df_TracePoints
-    
+
     @property
     def AngleMeasurementPoints(self):
         return self.df_AngleMeasurementPoints
-    
+
     @property
     def TorqueMeasurementPoints(self):
         return self.df_TorqueMeasurementPoints    
-    
+
     def __str__(self):
         return """ToolsTrace(filename='{s.filename}')
     Title              = '{title}'
@@ -186,9 +188,10 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
             ax.legend().set_visible(False)
             for t in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Time'] != 0.0]['Time']:
                 ax.axvline(x=t, alpha=0.2, color='red')
-            for index, row in self.df_StepResult.iterrows():
-                t = row['StartTime']
-                ax.axvline(x=t, alpha=0.2, color='red')
+            if self.df_StepResult:
+                for index, row in self.df_StepResult.iterrows():
+                    t = row['StartTime']
+                    ax.axvline(x=t, alpha=0.2, color='red')
 
 
         fig.set_size_inches(np.r_[250, 250 / 1.4] / 25.4)
@@ -225,11 +228,12 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
             c = TMP['color'][i]
             ax.axhline(y=T, alpha=0.3, color=c)
 
-        for index, row in self.df_StepResult.iterrows():
-            dp = self.df_TracePoints.iloc[self.df_TracePoints.index.get_loc(row['StartTime'], method='nearest')]
-            a = dp['Angle Median in deg'] + angleOffsetDeg
-            ax.axvline(x=a, alpha=0.2, color='red')
-            ax.axhline(y=dp['Torque Median in Nm'], alpha=0.2, color='red')
+        if self.df_StepResult:
+            for index, row in self.df_StepResult.iterrows():
+                dp = self.df_TracePoints.iloc[self.df_TracePoints.index.get_loc(row['StartTime'], method='nearest')]
+                a = dp['Angle Median in deg'] + angleOffsetDeg
+                ax.axvline(x=a, alpha=0.2, color='red')
+                ax.axhline(y=dp['Torque Median in Nm'], alpha=0.2, color='red')
 
         fig.set_size_inches(np.r_[250, 250 / 1.4] / 25.4)
         fig.tight_layout(pad=3, w_pad=1.0, h_pad=1.0)
