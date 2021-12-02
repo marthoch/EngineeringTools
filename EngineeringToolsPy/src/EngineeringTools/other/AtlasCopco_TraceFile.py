@@ -188,7 +188,7 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
             ax.legend().set_visible(False)
             for t in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Time'] != 0.0]['Time']:
                 ax.axvline(x=t, alpha=0.2, color='red')
-            if self.df_StepResult:
+            if self.df_StepResult is not None:
                 for index, row in self.df_StepResult.iterrows():
                     t = row['StartTime']
                     ax.axvline(x=t, alpha=0.2, color='red')
@@ -228,7 +228,7 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
             c = TMP['color'][i]
             ax.axhline(y=T, alpha=0.3, color=c)
 
-        if self.df_StepResult:
+        if self.df_StepResult is not None:
             for index, row in self.df_StepResult.iterrows():
                 dp = self.df_TracePoints.iloc[self.df_TracePoints.index.get_loc(row['StartTime'], method='nearest')]
                 a = dp['Angle Median in deg'] + angleOffsetDeg
