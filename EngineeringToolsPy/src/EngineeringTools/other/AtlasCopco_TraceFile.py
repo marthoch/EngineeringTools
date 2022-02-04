@@ -155,7 +155,7 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
         pd.set_option('mode.chained_assignment', chained_assignment)
         return TMP
 
-    def plot_trace(self, fig=None):
+    def plot_trace(self, fig=None, synchPeak=None, **plotparameter):
         if fig:
             axs = fig.axes
         else:
@@ -166,17 +166,39 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
 
         TMP = self._TorqueMeasurementPointsWC()
 
-        ax = self.TracePoints.plot(ax=axs[0], y='Angular Speed in rot/s', label=self.title())
+        # calc synchronization
+        time0 = 0.0
+        selftrace = self.TracePoints.copy()
+        if synchPeak is True:
+            tT = selftrace['Torque Median in Nm']
+            if tT.max() > -0.5 * tT.min():
+                synchi = tT.to_numpy().argmax()
+            else:
+                synchi = tT.to_numpy().argmin()
+            time0 = selftrace.index[synchi]
+            selftrace.index -= time0
+            selftrace['Angle Median in rot'] -= selftrace['Angle Median in rot'].iloc[synchi]
+
+        if 'label' in plotparameter:
+            label = plotparameter['label']
+            plotparameter.pop('label')
+        else:
+            label = self.title()
+
+        # plot speed
+        ax = selftrace.plot(ax=axs[0], y='Angular Speed in rot/s', label=label, **plotparameter)
         ax.set_ylabel('Angular Speed in rot/s')
 
-        ax = self.TracePoints.plot(ax=axs[1], y='Angle Median in rot', label=self.title())
+        # plot angle
+        ax = selftrace.plot(ax=axs[1], y='Angle Median in rot', label=label, **plotparameter)
         ax.set_ylabel('Angle Median in rot')
         for i in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Angle'] != 0.0].index:
             a = self.TorqueMeasurementPoints['Angle'][i] / 360
             c = TMP['color'][i]
             ax.axhline(y=a, alpha=0.3, color=c)
 
-        ax = self.TracePoints.plot(ax=axs[2], y='Torque Median in Nm', label=self.title())
+        # plot torque
+        ax = selftrace.plot(ax=axs[2], y='Torque Median in Nm', label=label, **plotparameter)
         ax.set_ylabel('Torque Median in Nm')
         for i in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Torque'] != 0.0].index:
             T = self.TorqueMeasurementPoints['Torque'][i]
@@ -186,32 +208,44 @@ plot(t.TracePoints.Angle_Median_in_rot, t.TracePoints.Torque_Median_in_Nm)
         for ax in axs:
             ax.grid(True, which='both')
             ax.legend().set_visible(False)
-            for t in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Time'] != 0.0]['Time']:
-                ax.axvline(x=t, alpha=0.2, color='red')
+#            for t in self.TorqueMeasurementPoints[self.TorqueMeasurementPoints['Time'] != 0.0]['Time']:
+            for t in self.TorqueMeasurementPoints['Time']:
+                ax.axvline(x=t-time0, alpha=0.2, color='red')
             if self.df_StepResult is not None:
                 for index, row in self.df_StepResult.iterrows():
                     t = row['StartTime']
-                    ax.axvline(x=t, alpha=0.2, color='red')
-
+                    ax.axvline(x=t-time0, alpha=0.2, color='red')
 
         fig.set_size_inches(np.r_[250, 250 / 1.4] / 25.4)
         fig.tight_layout(pad=3, w_pad=1.0, h_pad=1.0)
-
         return fig
 
-    def plot_trace_angle(self, fig=None, angleOffsetDeg=None):
+
+    def plot_trace_angle(self, fig=None, angleOffsetDeg=None, synchPeak=None, **plotparameter):
         if fig:
             ax = fig.axes[0]
         else:
             fig, ax = plt.subplots(1, 1)
         fig.canvas.manager.set_window_title('{} Trace Angle Plot'.format(self.title()))
 
-        selfrace = self.TracePoints.copy()
-        if not angleOffsetDeg:
+        selftrace = self.TracePoints.copy()
+        if synchPeak is True:
+            tT = self.TracePoints['Torque Median in Nm']
+            if tT.max() > -0.5*tT.min():
+                angleOffsetDeg = - self.TracePoints['Angle Median in deg'].iloc[tT.to_numpy().argmax()]
+            else:
+                angleOffsetDeg = - self.TracePoints['Angle Median in deg'].iloc[tT.to_numpy().argmin()]
+        if angleOffsetDeg is None:
             angleOffsetDeg = -self.TracePoints['Angle Median in deg'].max()
-        selfrace['Angle0 Median in deg'] = self.TracePoints['Angle Median in deg'] + angleOffsetDeg
 
-        selfrace.plot(ax=ax, x='Angle0 Median in deg', y='Torque Median in Nm', label=self.title())
+        selftrace['Angle0 Median in deg'] = self.TracePoints['Angle Median in deg'] + angleOffsetDeg
+
+        if 'label' in plotparameter:
+            label = plotparameter['label']
+            plotparameter.pop('label')
+        else:
+            label = self.title()
+        selftrace.plot(ax=ax, x='Angle0 Median in deg', y='Torque Median in Nm', label=label, **plotparameter)
         ax.grid(True, which='both')
         ax.set_ylabel('Torque Median in Nm')
         ax.legend().set_visible(False)
