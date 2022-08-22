@@ -509,15 +509,21 @@ class SpringConstantTorsion(QuantityFloat):
 
     M = -k*phi
 
-    >>> SpringConstantTorsion(1.0, 'N*m/rad', displayUnit='N*m/rad')
-    quantities.SpringConstantTorsion(value=1.0, unit='N*m/rad', displayUnit='N*m/rad')
+    >>> print(SpringConstantTorsion(1.0, 'N.m/rad'))
+       1.00  N.m/rad (SpringConstantTorsion)
+    >>> print(SpringConstantTorsion(Torque(1, 'N.m')/Angle(1, 'rad')))
+       1.00  N.m/rad (SpringConstantTorsion)
+    >>> print(SpringConstantTorsion(Torque(20, 'N.m')/Angle(10, 'deg'), displayUnit='N.m/deg'))
+       2.00  N.m/deg (SpringConstantTorsion)
+    >>> print(SpringConstantTorsion(Torque(20, 'N.m')/Angle(2, 'rot'), displayUnit='N.m/rot'))
+      10.0   N.m/rot (SpringConstantTorsion)
 
     """
-    _isoUnit = 'N*m/rad'
-    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'N/mm',
-                                                       'str_quantization':{'method':'1r', 'precision':3}}}
-    _units = { 'N*m/rad':1.0}
-    _uval_units = {'meter':1+1, 'kilogram':1, 'second':-2}
+    _isoUnit = 'N.m/rad'
+    _displayUnitSystemList = {'mechanicalEngineering': {'displayUnit': 'N.m/rad',
+                                                        'str_quantization': {'method': '1r', 'precision': 3}}}
+    _units = { 'N.m/rad': 1.0, 'N.m/rot': 1/(2*_np.pi), 'N.m/deg':360./(2*_np.pi)}
+    _uval_units = {'meter': 1+1, 'kilogram': 1, 'second': -2}
 
 
 ################################################################################
@@ -633,7 +639,7 @@ class Time(QuantityFloat):
     _isoUnit = 's'
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'sec',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
-    _units = {'us':1e-6, 'ms':0.001, 'sec':1.0, 's':1.0, 'min':60.0, 'h':60.0*60.0,
+    _units = {'ns':1e-9, 'us':1e-6, 'ms':0.001, 'sec':1.0, 's':1.0, 'min':60.0, 'h':60.0*60.0,
               'd':24.0*60.0*60.0, 'a':365.25*24.0*60.0*60.0}
     _uval_units = {'second':1}
 
