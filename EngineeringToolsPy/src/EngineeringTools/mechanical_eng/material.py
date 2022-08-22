@@ -72,6 +72,7 @@ class Steel(Material):
         self.name = 'steel'
         self.density = ETQ.Density(7800., 'kg/m3')
         self.youngs_modulus = ETQ.Stress(210e3, 'N/mm2')
+        self.shear_modulus =  ETQ.Stress( 80e3, 'N/mm2')
         self.Rp_list = []
 
     def Rp(self, thicknessNominal=None):
