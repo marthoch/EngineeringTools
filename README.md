@@ -1,5 +1,11 @@
 # EngineeringTools
 
+EngineeringTools supports engineering calculations by providing quantities (like Distance, Volume, Area, Force, ..).  
+Quantities provide ways for user readable input with unit conversion and engineering like formatted output. Inconsistency with units and quantities is a common problem in engineering calcualtions.  
+Quantities provide automatic unit checking in calculations and so supporting engineers to avoid mistakes in calculations.   
+EngineeringTools provides tools supporting engineers like beam section calculations, fluid power, and so on. 
+
+
 ```python
 # Example: Calculation of the Volume of a Box
 >>> data = ET.Obj('Box')
