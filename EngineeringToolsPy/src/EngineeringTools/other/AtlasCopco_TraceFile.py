@@ -1,4 +1,16 @@
+#!/usr/bin/env python3
+# pylint: disable-msg=line-too-long,missing-module-docstring,missing-function-docstring,missing-class-docstring,no-else-return,invalid-name
+"""
+Read Trace files (.csv) from Atlas Copco ToolsTalk2
+
+https://github.com/marthoch/EngineeringTools/blob/master/EngineeringToolsPy/src/EngineeringTools/other/AtlasCopco_TraceFile.py
+"""
+__author__  = 'Martin Hochwallner <marthoch@users.noreply.github.com>'
+__email__   = "marthoch@users.noreply.github.com"
+__license__ = "BSD 3-clause"
+
 import logging
+import datetime
 import scipy as sp
 import scipy.signal as spsig
 import scipy.io
@@ -87,7 +99,7 @@ class ToolsTrace():
 
     @property
     def DateTime(self):
-        return self.df_Task['DateTime'][0]
+        return datetime.datetime.strptime(self.df_Task['DateTime'][0], '%m/%d/%Y %I:%M:%S %p')
 
     @property
     def ResultOk(self):
