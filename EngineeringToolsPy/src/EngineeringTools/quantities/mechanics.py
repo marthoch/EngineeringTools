@@ -700,7 +700,7 @@ class Velocity(QuantityFloat):
        1.00  m/sec (Velocity)
     """
     _isoUnit = 'm/sec'
-    _units = {'m/sec':1.0, 'm/s':1.0, 'km/h':1000.0/(60*60), 'c0':299792458.0, 'm/min':1/60.}
+    _units = {'m/sec':1.0, 'm/s':1.0, 'km/h':1000.0/(60*60), 'c0':299792458.0, 'm/min':1/60., 'mm/s':0.001}
     _uval_units = {'meter':1, 'second':-1}
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'m/sec',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
