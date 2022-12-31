@@ -220,6 +220,8 @@ class Quantity:
             self._str_quantization = DEFAULT_STR_QUANTIZATION
         else:
             self._str_quantization = {'method':method, 'precision':precision}
+        return self
+
 
     def __init__(self, value, unit=None, displayUnit=None, typecast=True):
         """q  =  Quantity(value, unit=iso, displayUnit=unit)
@@ -281,7 +283,7 @@ class Quantity:
         >>> from EngineeringTools.quantities.quantitiesbase import *
         >>> from EngineeringTools.quantities.mechanics import *
 
-        >>> k = Scalar(1.0); k.set_displayUnit('%')
+        >>> k = Scalar(1.0); _ = k.set_displayUnit('%')
         >>> print(k.get_str())
          100     %       (Scalar)
         >>> print(k.get_str(withQuantity=False))
@@ -732,15 +734,15 @@ class Quantity:
             >>> from EngineeringTools.quantities.mechanics import *
 
             >>> q = Distance(0.0000001, 'm')
-            >>> q.set_displayUnit('__AUTO__'); print(q)
+            >>> _ = q.set_displayUnit('__AUTO__'); print(q)
                0.100 mu (Distance)
             >>> q = Distance(1000000.0, 'm')
-            >>> q.set_displayUnit('__AUTO__'); print(q)
+            >>> _ = q.set_displayUnit('__AUTO__'); print(q)
             1000.000 km (Distance)
-            >>> q.set_displayUnit('__ISO__'); print(q)
+            >>> _ = q.set_displayUnit('__ISO__'); print(q)
             1000000.000 m (Distance)
             >>> Quantity.set_displayUnitSystem('mechanicalEngineering')
-            >>> q.set_displayUnit('__unitSystem__'); print(q)
+            >>> _ = q.set_displayUnit('__unitSystem__'); print(q)
             1000000000.000 mm (Distance)
 
         @param displayUnit: displayUnit or method to choose displayUnit
@@ -786,7 +788,7 @@ class Quantity:
                 self._str_quantization = None
         else:
             raise ParaDInF_quantity_ErrorUnitNotFound('unit "{:s}" is not available. Use: {}.'.format(displayUnit, ', '.join(self._units.keys())))
-        # return self  # FIXME: better or not?
+        return self
 
 
     def copy(self):
