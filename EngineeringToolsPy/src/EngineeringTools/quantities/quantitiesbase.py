@@ -76,7 +76,7 @@ if __name__ == '__main__':
     from EngineeringTools import quantities as ETQ                 # pylint: disable=reimported,import-outside-toplevel
     ETQ.Quantity.set_displayUnitSystem('mechanicalEngineering')
     module_name = 'EngineeringTools.quantities.quantitiesbase'     # pylint: disable=invalid-name
-    module = __import__(module_name, fromlist=['*'], level=0)      # pylint: disable=invalid-name                                # pylint: disable=protected-access
+    module = __import__(module_name, fromlist=['*'], level=0)      # pylint: disable=invalid-name, disable=protected-access
     print(doctest.testmod(module, optionflags=doctest.ELLIPSIS))
     sys.exit()
 
@@ -232,7 +232,7 @@ class Quantity:
 
         """
         self.log = logging.getLogger('ParaDIn.quantity')
-        self.log.debug('quantitiy %s __init__ (%s (%s))', self.__class__.__name__, type(value), value)
+        self.log.debug('quantity %s __init__ (%s (%s))', self.__class__.__name__, type(value), value)
         self._displayUnit = None
         if isinstance(value, Quantity):
             if isinstance(value, self.__class__):
@@ -1158,14 +1158,6 @@ class QuantityInt(QuantityNumeric):
             self.log.error('KeyError unit: %s; %s', self.get_quantity_name(), reason)
             raise reason
 
-
-    #def __str__(self):
-    #    """QuantityInt.__str__() ... string representation"""
-    #    return '%d {%s}' % (self.convert2unit(self._value, self._displayUnit), self._displayUnit)
-
-    #__repr__ = __str__
-
-
 ################################################################################
 class QuantityString(Quantity):
     """Quantity  string
@@ -1269,14 +1261,19 @@ class QuantityString(Quantity):
 
     def __mul__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __imul__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __rmul__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __truediv__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __div__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __idiv__(self, obj):
         raise NotImplementedError('makes no sense')
 
@@ -1290,7 +1287,6 @@ class QuantityBoolean(Quantity):
               'T/F':{True:'T', False:'F'},
               'True/False':{True:'True', False:'False'},
               '1/0':{True:1, False:0}}
-
 
     def __init__(self, value, unit=None, displayUnit=None, typecast=False):
         if unit is None and not isinstance(value, (Quantity, UVal)):
@@ -1319,7 +1315,7 @@ class QuantityBoolean(Quantity):
         value = self.convert2unit(self._value, unit)
         ret = '%10s' % value
         if not vargsd.get('alignment', True):
-            ret = ret.strip() #IGNORE:E1103
+            ret = ret.strip()    # IGNORE:E1103
         if vargsd.get('withUnit', True):
             if vargsd.get('alignment', True):
                 if vargsd.get('withQuantity', True):
@@ -1329,10 +1325,9 @@ class QuantityBoolean(Quantity):
                     ret = '%s(%s)' % (ret, self.__class__.__name__)
         return ret
 
-
     def convert2iso(self, value, unit, typecast=False):
         """convert2iso(value, unit) ... convert value from unit to iso-unit"""
-        if  typecast:
+        if typecast:
             raise NotImplementedError()
         else:
             if not isinstance(value, (bool, str)):
@@ -1349,7 +1344,6 @@ class QuantityBoolean(Quantity):
         except KeyError as reason:
             self.log.error('KeyError unit: %s; %s', self.get_quantity_name(), reason)
             raise reason
-
 
     def convert2unit(self, value, unit):
         """convert2unit(value, unit) ... convert value from iso-unit to unit"""
@@ -1370,30 +1364,40 @@ class QuantityBoolean(Quantity):
         else:
             raise ParaDInF_quantity_ErrorUnitNotFound('unit "%s" is not available' % displayUnit)
 
-
     def __add__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __sub__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __mul__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __imul__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __rmul__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __truediv__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __div__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __idiv__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __lt__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __le__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __gt__(self, obj):
         raise NotImplementedError('makes no sense')
+
     def __ge__(self, obj):
         raise NotImplementedError('makes no sense')
 
-#eof
+# seof
