@@ -10,4 +10,4 @@ __license__ = "BSD 3-clause"
 import EngineeringTools as ET
 import EngineeringTools.quantities as ETQ
 
-#et 
+# eof

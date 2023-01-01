@@ -46,18 +46,13 @@ __email__   = "marthoch@users.noreply.github.com"
 __license__ = "BSD 3-clause"
 
 # $Source$
-
-#from . import quantities
 from . import quantities as Q
 from .quantities import *
 from . import tools
 from .tools.functions import *
 from .container import Obj, REQ
 
-#from . import qnt
 from . import fluidpower_eng
 from . import mechanical_eng
-# from . import other
-# from . import special
 
-#eof
+# eof

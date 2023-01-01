@@ -211,6 +211,9 @@ def quant(val, method='1', precision=0, rettype=None, **formatdef):
 
     @return: quant returns a float
 
+    Args:
+        rettype:
+
 
     """
 
@@ -276,7 +279,7 @@ def quant(val, method='1', precision=0, rettype=None, **formatdef):
             valabs = abs(val)
             sign = -1.0 if val < 0.0 else 1.0
             e = math.floor(math.log10(valabs))
-            i = math.log(valabs /(10.0**e))/math.log(k)
+            i = math.log(valabs / (10.0**e)) / math.log(k)
             i = abs(int(rnd(sign*i)))
             if i == N:
                 i = 0
@@ -294,8 +297,7 @@ def quant(val, method='1', precision=0, rettype=None, **formatdef):
     width_ext = width_ext if width_ext >= 0 else 0
     tsep = format_.get('thousands_sep', '')
     tsepx = ',' if tsep else ''
-    #logging.critical(f'precision:{precision} precision_s:{precision_s} width:{width}')
-    strrep = f"{res:{width}{tsepx}.{precision_s}f}" + (width_ext)*' '
+    strrep = f"{res:{width}{tsepx}.{precision_s}f}" + width_ext*' '
     if tsep:
         strrep = strrep.replace(',', tsep)
 
@@ -304,13 +306,13 @@ def quant(val, method='1', precision=0, rettype=None, **formatdef):
     elif rettype == 'string':
         return strrep
     elif rettype == 'both':
-        return (res, strrep)
+        return res, strrep
     else:
         raise Exception('type not known')
 
 # some alias
 
-def r5(val): #IGNORE:C0103
+def r5(val): # IGNORE:C0103
     """Normzahlenreihe R5
     nach DIN 323: [Roloff_Maschinenelemente_11_1987 Tab-A2-1]"""
     return quant(val, method='R5', precision=None)
@@ -363,4 +365,4 @@ if __name__ == '__main__':
     #_my_test()
 
     _test()
-#eof
+# eof

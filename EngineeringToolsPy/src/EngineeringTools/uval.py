@@ -11,7 +11,7 @@ __license__ = "BSD 3-clause"
 # run doctest, workaround relative import
 if __name__ == '__main__':
     import sys
-    import doctest # pylint: disable=import-outside-toplevel
+    import doctest        # pylint: disable=import-outside-toplevel
     import EngineeringTools.quantities as ETQ             # pylint: disable=import-self
     ETQ.Quantity.set_displayUnitSystem('mechanicalEngineering')
     module_name = 'EngineeringTools.uval'      # pylint: disable=invalid-name
@@ -114,7 +114,7 @@ class UVal:
     def __str__(self):
         unitstr = '{'
         for unitname in self._si_base_units_list:
-            if unitname in  self._units:
+            if unitname in self._units:
                 pot = self._units[unitname]
                 if pot != 0:
                     unitstr += self.si_base_units[unitname]
@@ -301,8 +301,10 @@ class UVal:
 
     def __xor__(self, obj):  # IGNORE:R0201
         raise EngineeringTools_uval_Error('do not use ^: pow: ** ')
+
     def __rxor__(self, obj): # IGNORE:R0201
         raise EngineeringTools_uval_Error('do not use ^: pow: ** ')
+
     def __ixor__(self, obj): # IGNORE:R0201
         raise EngineeringTools_uval_Error('do not use ^: pow: ** ')
 
