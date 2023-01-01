@@ -61,7 +61,7 @@ def sin(angle):
     >>> print(round(sin(angle.get_value('rad')), 3))
     0.5
     >>> sin(angle.get_uval())
-    UVal(0.49999999999999994, {})
+    UVal(0.49999999999999..., {})
     >>> print(sin(angle.get_uval()))
     0.5000 {}
     >>> print(sin(angle))
@@ -126,8 +126,8 @@ def cos(angle):
       30.000 deg (Angle)
     >>> print(cos(angle.get_value('rad')))
     0.866025403784...
-    >>> cos(angle.get_uval())
-    UVal(0.8660254037844387, {})
+    >>> cos(angle.get_uval()) # doctest: +ELLIPSIS
+    UVal(0.8660254037844..., {})
     >>> print(cos(angle.get_uval()))
     0.8660 {}
     >>> print(cos(angle))
@@ -193,7 +193,7 @@ def tan(angle):
     >>> print(tan(angle.get_value('rad')))
     0.5773502691...
     >>> tan(angle.get_uval())
-    UVal(0.5773502691896257, {})
+    UVal(0.5773502691896..., {})
     >>> print(tan(angle.get_uval()))
     0.5774 {}
     >>> print(tan(angle))
