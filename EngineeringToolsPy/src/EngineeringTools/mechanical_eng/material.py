@@ -74,6 +74,7 @@ class Steel(Material):
         self.youngs_modulus = ETQ.Stress(210e3, 'N/mm2')
         self.shear_modulus =  ETQ.Stress( 80e3, 'N/mm2')
         self.Rp_list = []
+        self.thermal_expansion_coefficient_linear = ETQ.ThermalExpansionCoefficientLinear(12e-6, '1/K')
 
     def Rp(self, thicknessNominal=None):
         # TODO: implement search in list

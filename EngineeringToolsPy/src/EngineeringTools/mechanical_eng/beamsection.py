@@ -135,7 +135,7 @@ class BeamSection_Rectangle(BeamSection):
         >>> ETQ.Quantity.set_str_quantization(None)
         >>> s = BeamSection_Rectangle(ETQ.Distance(200.0, 'mm'), ETQ.Distance(300.0,'mm'), thickness=ETQ.Distance(12.5,'mm')); print(s)
         BeamSection_Rectangle(Width= 200.000 mm (Distance), Hight= 300.000 mm (Distance), width= 175.000 mm (Distance), hight= 275.000 mm (Distance))
-        >>> A = s.A; A.set_displayUnit('cm^2'); print(A)
+        >>> A = s.A; _ = A.set_displayUnit('cm^2'); print(A)
          119     cm^2 (Area)
         >>> print(s.Ix)
         14700     cm^4 (MomentOfAreaSecond)

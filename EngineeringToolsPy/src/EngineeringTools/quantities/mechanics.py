@@ -57,9 +57,9 @@ class AccelerationAngular(QuantityFloat):
 
     >>> wdt = AccelerationAngular(VelocityAngular(3, 'rad/sec') / Duration(1, 'sec')); print(wdt)
        3.00  rad/sec2 (AccelerationAngular)
-    >>> wdt = AccelerationAngular(VelocityAngular(2*_np.pi, 'rad/sec') / Duration(1, 'sec')); wdt.set_displayUnit('rot/sec2'); print(wdt)
+    >>> wdt = AccelerationAngular(VelocityAngular(2*_np.pi, 'rad/sec') / Duration(1, 'sec')); _ = wdt.set_displayUnit('rot/sec2'); print(wdt)
        1.00  rot/sec2 (AccelerationAngular)
-    >>> wdt = AccelerationAngular(VelocityAngular(2*_np.pi, 'rad/sec') / Duration(1, 'sec')); wdt.set_displayUnit('rpm/sec'); print(wdt)
+    >>> wdt = AccelerationAngular(VelocityAngular(2*_np.pi, 'rad/sec') / Duration(1, 'sec')); _ = wdt.set_displayUnit('rpm/sec'); print(wdt)
       60.0   rpm/sec (AccelerationAngular)
     """
     _isoUnit = 'rad/sec2'
@@ -301,13 +301,13 @@ class MomentOfAreaFirst(QuantityFloat):
 class MomentOfInertiaOfMass(QuantityFloat):
     """Quantity  moment of inertia of mass
 
-    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'m')**2); J.set_displayUnit('kg.m^2'); print(J)
+    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'m')**2); _ = J.set_displayUnit('kg.m^2'); print(J)
        1.00  kg.m^2 (MomentOfInertiaOfMass)
-    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'cm')**2); J.set_displayUnit('kg.cm^2'); print(J)
+    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'cm')**2); _ = J.set_displayUnit('kg.cm^2'); print(J)
        1.00  kg.cm^2 (MomentOfInertiaOfMass)
-    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'mm')**2); J.set_displayUnit('kg.mm^2'); print(J)
+    >>> J = MomentOfInertiaOfMass(Mass(1.,'kg')*Distance(1.,'mm')**2); _ = J.set_displayUnit('kg.mm^2'); print(J)
        1.00  kg.mm^2 (MomentOfInertiaOfMass)
-    >>> J = MomentOfInertiaOfMass(Mass(1.,'g')*Distance(1.,'cm')**2); J.set_displayUnit('g.cm^2'); print(J)
+    >>> J = MomentOfInertiaOfMass(Mass(1.,'g')*Distance(1.,'cm')**2); _ = J.set_displayUnit('g.cm^2'); print(J)
        1.00  g.cm^2 (MomentOfInertiaOfMass)
     """
     _isoUnit = 'kg.m^2'
@@ -325,7 +325,7 @@ class MomentOfAreaSecond(QuantityFloat):
 
     >>> I = MomentOfAreaSecond(1.0, 'mm^4', 'mm^4'); print(I)
        1.00  mm^4 (MomentOfAreaSecond)
-    >>> I.set_displayUnit('m^4'); print(I)
+    >>> _ = I.set_displayUnit('m^4'); print(I)
        0.00000000000100 m^4 (MomentOfAreaSecond)
     """
     _isoUnit = 'm^4'
@@ -634,6 +634,53 @@ class TemperatureDifferential(QuantityFloat):
 
 
 ################################################################################
+class HeatCapacitySpecific(QuantityFloat):
+    """Quantity  specific heat capacit
+    y
+        >>> print(HeatCapacitySpecific(Energie(1, 'J')/(Mass(1, 'kg')*TemperatureDifferential(1,'K'))))
+           1.00  J/(kg.K) (HeatCapacitySpecific)
+        >>> print(HeatCapacitySpecific(Energie(1000, 'J')/(Mass(1, 'kg')*TemperatureDifferential(1,'K'))))
+        1000     J/(kg.K) (HeatCapacitySpecific)
+
+    """
+    _isoUnit = 'J/(kg.K)'
+    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'J/(kg.K)',
+                                                       'str_quantization':{'method':'1r', 'precision':3}}}
+    _units = {'J/(kg.K)':1.0,'kJ/(kg.K)':1000.0}
+    _uval_units = {'meter': 2, 'kilogram': 0, 'second': -2, 'kelvin':-1}
+
+
+################################################################################
+class HeatFlux(QuantityFloat):
+    """Quantity  HeatFlux
+    y
+        >>> print(HeatFlux(Power(1, 'W')/Area(1, 'm2')))
+           1.00  W/m2 (HeatFlux)
+
+    """
+    _isoUnit = 'W/m2'
+    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'W/m2',
+                                                       'str_quantization':{'method':'1r', 'precision':3}}}
+    _units = {'W/m2':1.0}
+    _uval_units = {'kilogram': 1, 'second': -3}
+
+
+
+################################################################################
+class ThermalExpansionCoefficientLinear(QuantityFloat):
+    """Quantity  ThermalExpansionCoefficientLinear
+
+        >>> print(ThermalExpansionCoefficientLinear(1, '1/K'))
+           1.00  1/K (ThermalExpansionCoefficientLinear)
+
+    """
+    _isoUnit = '1/K'
+    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'1/K',
+                                                       'str_quantization':{'method':'1r', 'precision':3}}}
+    _units = {'1/K':1.0}
+    _uval_units = {'kelvin':-1}
+
+################################################################################
 class Time(QuantityFloat):
     """Quantity  time"""
     _isoUnit = 's'
@@ -718,9 +765,9 @@ class VelocityAngular(QuantityFloat):
        1.00  Hz (Frequency)
     >>> print(w.convert2Speed())
       60.0   rpm (Speed)
-    >>> w.set_displayUnit('rot/sec'); print(w)
+    >>> _ = w.set_displayUnit('rot/sec'); print(w)
        1.00  rot/sec (VelocityAngular)
-    >>> w.set_displayUnit('rpm'); print(w)
+    >>> _ = w.set_displayUnit('rpm'); print(w)
       60.0   rpm (VelocityAngular)
     """
     _isoUnit = 'rad/sec'

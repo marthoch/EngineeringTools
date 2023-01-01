@@ -96,7 +96,7 @@ def arcsin(scalar):
     UVal(0.5235987755982989, {})
     >>> print(asin(scalar.get_uval()))
     0.5236 {}
-    >>> a=asin(scalar); a.set_displayUnit('deg'); print(a)
+    >>> a=asin(scalar); _ = a.set_displayUnit('deg'); print(a)
       30.000 deg (Angle)
     >>> print(asin(ETQ.Distance(0.5, 'm')))
     Traceback (most recent call last):
@@ -162,7 +162,7 @@ def arccos(scalar):
     1.047 {}
     >>> print(arccos(scalar.get_uval()))
     1.047 {}
-    >>> a=arccos(scalar); a.set_displayUnit('deg'); print(a)
+    >>> a=arccos(scalar); _ = a.set_displayUnit('deg'); print(a)
       60.000 deg (Angle)
     >>> print(arccos(ETQ.Distance(0.5, 'm')))
     Traceback (most recent call last):
@@ -226,7 +226,7 @@ def atan(scalar):
     0.46364760900...
     >>> print(atan(scalar.get_uval()))
       26.565 deg (Angle)
-    >>> a=atan(scalar); a.set_displayUnit('deg'); print(a)
+    >>> a=atan(scalar); _ = a.set_displayUnit('deg'); print(a)
       26.565 deg (Angle)
     >>> print(atan(ETQ.Distance(0.5, 'm')))
     Traceback (most recent call last):

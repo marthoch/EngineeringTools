@@ -15,6 +15,7 @@ class Oil:
         self.description = 'general hydraulic oil'
         self.bulkmodulus = Q.Stress(1.0e9, 'Pa')
         self.density = Q.Density(890., 'kg/m^3')
+        self.heat_capacity_specific = Q.HeatCapacitySpecific(1.67, 'kJ/(kg.K)')
 
 
     def _repr_html_(self):
