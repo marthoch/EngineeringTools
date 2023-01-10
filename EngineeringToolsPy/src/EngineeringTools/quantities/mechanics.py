@@ -657,7 +657,7 @@ class ThermalConductivity(QuantityFloat):
     """Quantity  Thermal conductivity
     y
         >>> print(ThermalConductivity(Power(1, 'W')/(Distance(1, 'm')*TemperatureDifferential(1,'K'))))
-           1.00  J/(kg.K) (HeatCapacitySpecific)
+           1.00  W/(m.K) (ThermalConductivity)
 
     """
     _isoUnit = 'W/(m.K)'
