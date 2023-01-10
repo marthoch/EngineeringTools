@@ -468,12 +468,14 @@ class Speed(QuantityFloat):
     _isoUnit = '1/s'
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'rpm',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
-    _units = {'1/s':1.0, '1/sec':1.0, 'Hz':1.0, 'rpm':1.0/60.0}
+    _units = {'1/s':1.0, '1/sec':1.0, 'Hz':1.0, 'rpm':1.0/60.0, 'cps':1.0, 'cpm':1.0/60.0}
     _uval_units = {'second':-1}
 
     def convert2Frequency(self):
         return Frequency(self.get_value('1/s'), 'Hz')
 
+    def convert2VelocityAngular(self):
+        return VelocityAngular(self.get_value('Hz') * 2 * scipy.constants.pi, 'rad/sec')
 
 ################################################################################
 class Stress(QuantityFloat):
@@ -651,6 +653,22 @@ class HeatCapacitySpecific(QuantityFloat):
 
 
 ################################################################################
+class ThermalConductivity(QuantityFloat):
+    """Quantity  Thermal conductivity
+    y
+        >>> print(ThermalConductivity(Power(1, 'W')/(Distance(1, 'm')*TemperatureDifferential(1,'K'))))
+           1.00  J/(kg.K) (HeatCapacitySpecific)
+
+    """
+    _isoUnit = 'W/(m.K)'
+    _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'W/(m.K)',
+                                                       'str_quantization':{'method':'1r', 'precision':3}}}
+    _units = {'W/(m.K)':1.0}
+    _uval_units = {'meter': 1, 'kilogram': 1, 'second': -3, 'kelvin':-1}
+
+
+
+################################################################################
 class HeatFlux(QuantityFloat):
     """Quantity  HeatFlux
     y
@@ -771,7 +789,7 @@ class VelocityAngular(QuantityFloat):
       60.0   rpm (VelocityAngular)
     """
     _isoUnit = 'rad/sec'
-    _units = {'rad/sec':1.0, 'rot/sec':(2*_np.pi), 'rpm':(2*_np.pi)/60}
+    _units = {'rad/sec':1.0, 'rot/sec':(2*_np.pi), 'rpm':(2*_np.pi)/60, 'cpm':(2*_np.pi)/60, 'cps':(2*_np.pi)}
     _uval_units = {'second':-1}
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'rad/sec',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}

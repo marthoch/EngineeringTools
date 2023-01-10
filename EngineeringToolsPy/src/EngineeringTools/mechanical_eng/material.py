@@ -83,11 +83,12 @@ class Steel(Material):
 
 
 class Steel_S355JR(Steel):
+    '''
+    http://www.steelnumber.com/en/steel_composition_eu.php?name_id=8
+    '''
 
     def __init__(self):
-        '''
-        http://www.steelnumber.com/en/steel_composition_eu.php?name_id=8
-        '''
+        """ """
         super(Steel_S355JR, self).__init__()
         self.name = 'Steel: S355JR'
         self.identifiers.append('S355JR')
@@ -113,6 +114,35 @@ class Steel_34CrNiMo6(Steel):
         self.identifiers.append('Sweden SS 2541')
         self.Rp_list = [ETQ.Stress(1000., 'N/mm2'),
                        ]
+
+class CastIron(Material):
+    """https://www.meuselwitz-guss.de/fileadmin/daten/Dateien/pdf/werkstoffe/Werkstoffkenndaten_Lammellengraphit.pdf"""
+
+    def __init__(self):
+        """ """
+        super(CastIron, self).__init__()
+        self.name = 'CastIron: EN - GJL'
+        self.density = ETQ.Density(7200., 'kg/m3')
+        self.youngs_modulus = ETQ.Stress(110e3, 'N/mm2')
+        self.thermal_expansion_coefficient_linear = ETQ.ThermalExpansionCoefficientLinear(12e-6, '1/K')
+
+
+class ChilledDuctileIron_CDI580(CastIron):
+    """Chilled Ductile Iron
+    https://www.hwk1365.de/en/cdi/"""
+
+    def __init__(self):
+        """ """
+        super(ChilledDuctileIron_CDI580, self).__init__()
+        self.name = 'Chilled Ductile Iron: Cast_CDI580'
+        self.identifiers.append('CDI 580')
+        self.density = ETQ.Density(7200., 'kg/m3')
+        self.youngs_modulus = ETQ.Stress(175000, 'N/mm2')
+        self.thermal_expansion_coefficient_linear = ETQ.ThermalExpansionCoefficientLinear(12.5e-6, '1/K')
+        #self.heatCapacitySpecific = ETQ.HeatCapacitySpecific(, '')
+        self.yield_strength = ETQ.Stress(440, 'N/mm2')
+        self.thermal_conductivity = ETQ.ThermalConductivity(35, 'W/(m.K)')
+        #self.poissons_ratio     # FIXME
 
 
 ################################################################################
