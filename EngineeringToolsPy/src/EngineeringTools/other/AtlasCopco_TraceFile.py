@@ -99,7 +99,12 @@ class ToolsTrace():
 
     @property
     def DateTime(self):
-        return datetime.datetime.strptime(self.df_Task['DateTime'][0], '%m/%d/%Y %I:%M:%S %p')
+        str = self.df_Task['DateTime'][0]
+        if str[4] == '/':
+            ret = datetime.datetime.strptime(str, '%m/%d/%Y %I:%M:%S %p')
+        elif str[4] == '-':
+            ret = datetime.datetime.strptime(str, '%Y-%m-%d %I:%M:%S')
+        return ret
 
     @property
     def ResultOk(self):
@@ -138,7 +143,7 @@ class ToolsTrace():
             filename = self.filename + '.mat'
         df = self.df_TracePoints.copy()
         df = df.reset_index()
-        df.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
+        df.rename(columns=lambda x: x.replace(' ', '_').replace('/', '_p_'), inplace=True)
         dataML = {'TracePoints': df.to_dict("list")}
         dataML['Task'] = self.df_Task.to_dict()
         dataML['AngleMeasurementPoints'] = self.df_AngleMeasurementPoints.to_dict()
