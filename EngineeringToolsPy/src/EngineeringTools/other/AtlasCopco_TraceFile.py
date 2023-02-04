@@ -17,6 +17,7 @@ import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import re
 
 
 class ToolsTrace():
@@ -100,10 +101,15 @@ class ToolsTrace():
     @property
     def DateTime(self):
         str = self.df_Task['DateTime'][0]
-        if str[4] == '/':
+        if re.search('[0-9]+-[0-9]+-[0-9]+ [0-9]+:[0-9]+:[0-9]+', str):
+            # '2000-01-01 14:12:30'
+            ret = datetime.datetime.strptime(str, '%Y-%m-%d %H:%M:%S')
+        elif re.search('[0-9]+/[0-9]+/[0-9]+ [0-9]+:[0-9]+:[0-9]+ [AP]M', str):
+            # '01/30/2020 1:00:00 PM'
             ret = datetime.datetime.strptime(str, '%m/%d/%Y %I:%M:%S %p')
-        elif str[4] == '-':
-            ret = datetime.datetime.strptime(str, '%Y-%m-%d %I:%M:%S')
+        else:
+            logging.error('unrecognized date format: {}'.format(str))
+            ret = str
         return ret
 
     @property
