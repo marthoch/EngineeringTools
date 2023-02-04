@@ -582,6 +582,8 @@ class TemperatureAbsolute(QuantityFloatOffset):
          273     K (TemperatureDifferential)
         >>> print(Ta2 + Td)
          273     K (TemperatureAbsolute)
+        >>> print(TemperatureAbsolute(20.0, 'degC') - TemperatureDifferential(10, 'K'))
+          10.0   degC (TemperatureAbsolute)
 
     """
 
@@ -611,8 +613,10 @@ class TemperatureAbsolute(QuantityFloatOffset):
         """sub two TemperatureAbsolute"""
         if isinstance(obj, self.__class__):
             return TemperatureDifferential(self.get_value() - obj.get_value(), self.get_isoUnit(), self.get_displayUnit())
+        elif isinstance(obj, TemperatureDifferential):
+            return TemperatureAbsolute(self.get_value() - obj.get_value(), self.get_isoUnit(), self.get_displayUnit())
         else:
-            raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch()
+            raise ParaDInF_quantity_ErrorQuantitiesDoNotMatch(obj.__class__)
 
 
 
