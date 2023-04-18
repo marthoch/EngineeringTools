@@ -72,7 +72,7 @@ class Obj:
 </tr>
 """.format(k, v._repr_html_())
 
-            elif isinstance(v, (list, _np.ndarray)) and isinstance(v[0], ETQ.Quantity):
+            elif isinstance(v, (list, _np.ndarray)) and (len(v) > 0) and isinstance(v[0], ETQ.Quantity):
                 txt = [vv._repr_html_() for vv in v]
                 txt = '<br>'.join(txt)
                 html += """<tr>
