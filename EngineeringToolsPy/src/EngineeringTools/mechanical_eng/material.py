@@ -125,7 +125,7 @@ class CastIron(Material):
         self.density = ETQ.Density(7200., 'kg/m3')
         self.youngs_modulus = ETQ.Stress(110e3, 'N/mm2')
         self.thermal_expansion_coefficient_linear = ETQ.ThermalExpansionCoefficientLinear(12e-6, '1/K')
-
+        self.heat_capacity_specific = ETQ.HeatCapacitySpecific(0.46, 'kJ/(kg.K)')
 
 class ChilledDuctileIron_CDI580(CastIron):
     """Chilled Ductile Iron
@@ -140,6 +140,7 @@ class ChilledDuctileIron_CDI580(CastIron):
         self.youngs_modulus = ETQ.Stress(175000, 'N/mm2')
         self.thermal_expansion_coefficient_linear = ETQ.ThermalExpansionCoefficientLinear(12.5e-6, '1/K')
         #self.heatCapacitySpecific = ETQ.HeatCapacitySpecific(, '')
+        self.ultimate_tensile_strength = ETQ.Stress(700, 'N/mm2')
         self.yield_strength = ETQ.Stress(440, 'N/mm2')
         self.thermal_conductivity = ETQ.ThermalConductivity(35, 'W/(m.K)')
         #self.poissons_ratio     # FIXME
