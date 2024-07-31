@@ -173,7 +173,7 @@ forcePermitted:         {self.forcePermitted}\
         >>> buckling.effectiveLengthFactor = "a"
         Traceback (most recent call last):
         ...
-        AssertionError: value must be a float
+        ValueError: could not convert string to float: 'a'
 
         >>> buckling.effectiveLengthFactor = 1.0
         >>> print(buckling.effectiveLengthFactor)

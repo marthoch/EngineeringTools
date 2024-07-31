@@ -430,10 +430,7 @@ class Scalar(QuantityFloat):
 
     def convert2iso(self, value, unit, typecast=False):
         """Quantity.convert2iso(value, unit) ... convert value from unit to iso-unit"""
-        if  typecast:
-            value = float(value)
-        else:
-            assert isinstance(value, float), 'value must be a float'
+        value = float(value)
         if unit in ('dB',):
             return 10.0**(value/10.0)
         elif unit in ('Np', 'Neper'):
