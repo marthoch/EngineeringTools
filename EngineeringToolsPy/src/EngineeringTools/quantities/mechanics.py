@@ -465,7 +465,7 @@ class Speed(QuantityFloat):
     _isoUnit = '1/s'
     _displayUnitSystemList = {'mechanicalEngineering':{'displayUnit':'rpm',
                                                        'str_quantization':{'method':'1r', 'precision':3}}}
-    _units = {'1/s':1.0, '1/sec':1.0, 'Hz':1.0, 'rpm':1.0/60.0, 'cps':1.0, 'cpm':1.0/60.0}
+    _units = {'1/s':1.0, '1/sec':1.0, 'rps':1.0, 'Hz':1.0, 'rpm':1.0/60.0, 'cps':1.0, 'cpm':1.0/60.0}
     _uval_units = {'second':-1}
 
     def convert2Frequency(self):
